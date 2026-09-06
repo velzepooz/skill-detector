@@ -32,7 +32,7 @@ docs/*
 !docs/cross-repo.md
 !docs/development-guide.md
 
-# Agent scratch: per-task briefs and reports
+# Local scratch
 .agent-scratch/
 
 # scripts/corpus-baseline.sh default output dirs — third-party skill
@@ -42,5 +42,4 @@ docs/*
 # Local dev worktrees
 .worktrees/
 
-# Superpowers subagent-driven-development scratch (ledger, briefs, review packages)
 .superpowers/

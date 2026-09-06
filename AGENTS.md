@@ -36,7 +36,7 @@ of truth — do not duplicate the tree here).
 Key wiring points:
 - `pkg/rules/registry.go::DefaultRegistry()` registers all rule groups — **add new rule groups here**. The CLI calls it directly; `--strict-mcp` does not swap the registry, it upgrades SD-021 post-hoc in `cmd/skill-detector/main.go::applyStrictMCP` so the checksum stays stable.
 - `pkg/permission/extractor.go` — `ruleCapabilities` / `capabilityFreeRules`. Every registered rule must appear in one of them; a test over `DefaultRegistry().All()` enforces it.
-- `pkg/model.SchemaVersion` — the JSON wire version. Shape change → bump in the same commit; `cmd/skill-detector/schema_golden_test.go` + `testdata/schema_shapes.json` fail otherwise. Procedure: [`docs/development-guide.md#json-output-schema`](docs/development-guide.md#json-output-schema).
+- `pkg/model.SchemaVersion` — the JSON wire version. Shape change → bump in the same commit; `cmd/skill-detector/schema_golden_test.go` + `cmd/skill-detector/testdata/schema_shapes.json` fail otherwise. Procedure: [`docs/development-guide.md#json-output-schema`](docs/development-guide.md#json-output-schema).
 - `pkg/scanner.Options.ScanAll` threads `--scan-all` from CLI through to `DiscoverWithOptions`.
 - `registry.Checksum()` hashes per-rule `(ID, Name, Severity, Category, Axis)` + `grade.CanonicalMetadata()` — any change to rules, axis assignments, cap-table cells, or rationale templates moves it. It is a **ruleset fingerprint** (printed by `version`), not a gate. `expectedChecksum` is deliberately never pinned. Record the value in `CHANGELOG.md` when it moves; do not add the ldflag.
 - Exit codes: `0`=clean, `1`=findings below the `--fail-on`/`--fail-on-axis` threshold, `2`=finding at/above threshold (worst of severity OR axis grade wins), `3`=tool error (bad args, unreadable path, internal failure).
@@ -46,10 +46,10 @@ Key wiring points:
 ## Scope
 
 The scanner intentionally walks only AI-agent files by default:
-- `SKILL.md`, `skill.yaml`
-- `CLAUDE.md` (any hierarchy level)
-- `.claude/settings.json`, `.claude/settings.local.json`
-- `.mcp.json`, `.claude/mcp.json`
+- Skill manifests: `SKILL.md`, `skill.yaml` (`IsSkillManifest`).
+- Per-harness instruction files, at any hierarchy level: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules`, `.windsurfrules` — plus `.github/copilot-instructions.md` and any `.mdc` under `.cursor/rules/`, which are matched by directory component, not by basename alone (`instructionFileNames` / `IsInstructionFile`). Content rules run uniformly across all of them; a rule that only handles `CLAUDE.md` is a bug.
+- `.claude/settings.json`, `.claude/settings.local.json`, at any depth under a `.claude/` (`IsClaudeSettings`).
+- MCP configs (`IsMCPConfig`): `.mcp.json` (leading dot) anywhere; bare `mcp.json` only under `.claude/`, `.cursor/` or `.vscode/`.
 - Anything under `.claude/`, `.codex/`, `.opencode/`, `.cursor/`, `.gemini/`, `.windsurf/`, `.agents/` directories (hook scripts, bundled test files, etc.). `.agents/` is the `npx skills add` install path — a skill installed the standard way lands there.
 - Anything under a directory containing a skill manifest — `SKILL.md` **or** `skill.yaml` (a *skill root*) — the whole subtree, wherever that directory sits. This is a filesystem fact, not a path-shape fact (`FileContext.SkillRoot`, `InScope(ctx)` in `pkg/rules/fileclass.go`). The hardcoded skip-dirs still sit above this — a manifest inside `node_modules/` etc. creates no root. `.github/` and `.vscode/` are excluded from this arm too.
 
@@ -80,7 +80,7 @@ a new dimension seems needed, raise it with the maintainer before writing code.
 - `testdata/clean/<rule-or-dir>/` — must produce zero findings.
 - `testdata/malicious/<rule>/` — must trigger that rule. **Fixture paths must satisfy `InScope`**: agent-file-shaped (`SKILL.md`/`CLAUDE.md`/`.claude/...`) *or* sitting beside a `SKILL.md`/`skill.yaml` in the fixture tree (a skill root), so the path-gated rules can fire.
 - `testdata/cve/<incident>/` — reproducer fixtures for named real-world incidents. Each is a minimal repo. Used by `cmd/skill-detector/cve_repro_test.go` for Go-API + binary E2E tests.
-- `testdata/edge-cases/` — empty-skill, malformed-yaml, hidden-dir, binary-file.
+- `testdata/edge-cases/` — `binary-file`, `empty-dir`, `empty-skill`, `hidden-dir`, `malformed-yaml`.
 - `gosec G101` excluded in `_test.go` (hardcoded creds in fixtures).
 - Fixture `CLAUDE.md` / `AGENTS.md` files track normally — `.gitignore` no longer excludes those names at any depth. Do not use `git add -f` for them; if one appears ignored, the pattern is wrong and the pattern is what to fix.
 
@@ -112,6 +112,7 @@ the following on inference; ask the maintainer first and get a yes:
 - `registry.Checksum()` and whether it gates anything
 - the default scope list, the skip-dirs, and any rule's path gate
 - demotion and suppression thresholds in any rule
+- `ScanResult.NoAgentSurface` and the result shape when a scan reads no in-scope file. A scan that checked nothing does not grade: `Axes` stays empty, and the result must not be reported, stored or displayed as a pass. It is not a missing default to fill in.
 
 The reasoning behind each of these is recorded outside this repo. Absence of a
 reason in the codebase is not evidence that there isn't one.
