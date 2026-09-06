@@ -7,18 +7,29 @@ dist/
 
 # Vendor (if used). Anchored to the repo root: an unanchored pattern also
 # swallows testdata fixtures that model a vendored skill, and those must be
-# committed (git add -f is reserved for fixture CLAUDE.md in this repo).
+# committed. Every pattern here that could match a fixture name must stay
+# anchored, for the same reason — a fixture that silently stops being
+# tracked is a test that silently stops running.
 /vendor/
 
 .claude/
-AGENTS.md
-CLAUDE.md
 
-# Engineering knowledge base — local only. Only the contributor-facing dev
-# guide is published. Excludes the *contents* of docs/, not the directory
-# itself, so the re-include below works (git cannot re-include a file whose
-# parent directory is excluded).
+# Engineering knowledge base — local only, because this repo is public.
+# Excludes the *contents* of docs/, not the directory itself, so the
+# re-includes below work (git cannot re-include a file whose parent
+# directory is excluded).
+#
+# The re-included set is exactly what an external agent needs to work in a
+# fresh clone, written in general terms. Everything else under docs/ is
+# internal and stays unpublished. This list is allow-only by design: adding
+# a new doc publishes nothing until it is named here, and a file is added
+# here only after it has been read for anything that should not be public.
 docs/*
+!docs/README.md
+!docs/architecture.md
+!docs/glossary.md
+!docs/product-context.md
+!docs/cross-repo.md
 !docs/development-guide.md
 
 # Agent scratch: per-task briefs and reports
@@ -28,7 +39,7 @@ docs/*
 # packages cloned by --fetch; never commit them on this public repo.
 .corpus/
 .corpus-results/
-# Local dev worktrees (see docs/runbooks/, superpowers workflow)
+# Local dev worktrees
 .worktrees/
 
 # Superpowers subagent-driven-development scratch (ledger, briefs, review packages)
