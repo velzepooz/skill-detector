@@ -59,11 +59,11 @@ var adversarialCases = []adversarialCase{
 	{dir: "control-declared-endpoint", axis: axes.Security, atMost: "A",
 		why: "a bare declared endpoint in a manifest is a disclosure, not a call to defend against"},
 	{dir: "control-assignment-capture", axis: axes.Security, atMost: "A",
-		why: "`VAR=$(curl …)` is the statement's own substitution, not a second command — 17 benign corpus findings, 4 samples"},
+		why: "`VAR=$(curl …)` is the statement's own substitution, not a second command — an ordinary shape in honest scripts"},
 	{dir: "control-markdown-inline-code", axis: axes.Security, atMost: "A",
 		why: "a command written in markdown inline code is still one command; backticks here are markup, not substitution"},
 	{dir: "control-redirect-to-file", axis: axes.Security, atMost: "A",
-		why: "redirection measured 25 benign findings against 2 malicious ones — vetoing it runs the wrong way"},
+		why: "vetoing on redirection costs far more honest findings than hostile ones — it runs the wrong way"},
 
 	// --- SD-025 (reverse shell): the three canonical shapes moved out of
 	// uncoveredShapes below now that the rule detects them. ---
@@ -159,11 +159,11 @@ var adversarialCases = []adversarialCase{
 	{dir: "sd004-modulepath-appended-command", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "reCredentialsModulePath is anchored at BOTH ends, so a second statement appended after a real import clause breaks the match instead of riding along on it"},
 	{dir: "control-sd004-credentials-import", axis: axes.PermissionHygiene, atMost: "A",
-		why: "importing a symbol from a module path ending in .credentials is not access to a credentials file — 4 benign corpus skills, 0 malicious"},
+		why: "importing a symbol from a module path ending in .credentials is not access to a credentials file — a recurring honest shape that does not occur on the hostile side"},
 	{dir: "sd004-fielddoc-exfil-command", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "the field-doc bullet shape is available to anyone; invokesCommandOnCredentialLine is what stops a bullet that runs a command from reading as documentation"},
 	{dir: "control-sd004-credentials-fielddoc", axis: axes.PermissionHygiene, atMost: "A",
-		why: "a reference-doc entry naming a credential field describes it rather than reaching for it — 4 benign corpus hits, 0 malicious"},
+		why: "a reference-doc entry naming a credential field describes it rather than reaching for it — an honest shape that does not occur on the hostile side"},
 	{dir: "sd004-fielddoc-reader-verb", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "`head -c` reads a credential as surely as `cat` does; reCredentialFileReader carries the read-and-inspect verbs that reShellInvocation deliberately omits, and widening the shared regex instead is what once turned threat-model prose into Critical SD-013 findings"},
 	{dir: "sd004-pub-token-private-read", axis: axes.PermissionHygiene, atLeast: "F",
@@ -171,13 +171,13 @@ var adversarialCases = []adversarialCase{
 	{dir: "sd004-pub-variable-private-key", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "$HOME/.ssh/id_rsa is a private key however it is spelled; reSSHPathToken has to RECOGNISE the variable spellings for the line to stop reading as all-public, which is a different question from whether it DETECTS them"},
 	{dir: "control-sd004-ssh-public-key", axis: axes.PermissionHygiene, atMost: "A",
-		why: "a public key is meant to be shared; this is the corpus line the exemption was built for, one .pub path and no command"},
+		why: "a public key is meant to be shared; this is the line the exemption was built for, one .pub path and no command"},
 	{dir: "control-sd004-negated-guidance", axis: axes.PermissionHygiene, atMost: "A",
 		why: "a prohibition naming a credential path is security guidance, which is what a skill's own docs are full of"},
 	{dir: "sd004-doctable-smuggled-command", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "a Markdown table row is a shape, not a proof of intent — reShellInvocation vetoes the documentary damping when the row carries a real command"},
 	{dir: "control-sd004-threat-model-table", axis: axes.PermissionHygiene, atMost: "A",
-		why: "the threat-model table from dogfood FP-1: a row naming a credential path with no command in it"},
+		why: "a threat-model table: a row naming a credential path with no command in it"},
 	{dir: "sd004-home-variable-private-key", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "credentialPaths held literal `~/`-spelled byte slices, so the identical read written through the home variable was invisible; the spelling table is what makes `$HOME/.ssh/` the same path as `~/.ssh/` rather than a second entry an exemption could miss"},
 	{dir: "control-sd004-home-variable-threat-model-table", axis: axes.PermissionHygiene, atMost: "A",
@@ -196,11 +196,11 @@ var adversarialCases = []adversarialCase{
 	// carve-out spares the compound-emoji spelling; the cap and the explicit
 	// codepoint set are what keep it from becoming a channel. ---
 	{dir: "sd002-zwj-over-cap", axis: axes.Security, atLeast: "F",
-		why: "one bit per adjacent emoji pair is a covert channel, and an uncapped carve-out exempts every bit of it; past maxExemptZWJPerLine none of the line's joiners are exempted, not merely the excess"},
+		why: "an uncapped carve-out would exempt every qualifying joiner on a line, however many there were; past maxExemptZWJPerLine none of the line's joiners are exempted, not merely the excess. The cap is load-bearing and must not be relaxed"},
 	{dir: "sd002-zwj-non-pictograph", axis: axes.Security, atLeast: "F",
 		why: "a check mark takes no ZWJ — the first version of this carve-out exempted the whole U+2600-U+27BF block, which is ordinary document furniture, so the boundary is an explicit codepoint set and not a block range"},
 	{dir: "control-sd002-compound-emoji", axis: axes.Security, atMost: "A",
-		why: "person+ZWJ+profession is how the character is spelled, not a payload — 9 of 10 benign SD-002 corpus findings and 0 of 29 malicious ones"},
+		why: "person+ZWJ+profession is how the character is spelled, not a payload — it is the dominant honest shape behind SD-002's invisible-rune findings, and does not occur on the hostile side"},
 
 	// --- SD-007's suppressions beyond the `declared` demotion the h1/h2/h3
 	// cases already cover. High on security, so a kept finding is D and a
@@ -218,7 +218,7 @@ var adversarialCases = []adversarialCase{
 	{dir: "sd008-inline-payload", axis: axes.Security, atLeast: "C",
 		why: "an 84-character mixed-case base64 run with no hash marker, no SRI key and no path shape around it is the population the inline branch exists for — this is the case every damping below is measured against"},
 	{dir: "control-sd008-lockfile-integrity", axis: axes.Security, atMost: "A",
-		why: "an npm/yarn integrity value is a checksum, not a payload — 322 benign corpus hits and zero malicious ones, the largest single false-positive class the inline branch had"},
+		why: "an npm/yarn integrity value is a checksum, not a payload — the largest single false-positive class the inline branch had, and absent from the hostile side"},
 	{dir: "control-sd008-hex-address", axis: axes.Security, atMost: "A",
 		why: "an EIP-55 checksummed Ethereum address is mixed-case hex with digits, so it passes isEncodedPayload — reHexBlob is the only thing keeping this line quiet, and this is the corpus line that damping exists for"},
 
@@ -266,9 +266,9 @@ var adversarialCases = []adversarialCase{
 // remain and are recorded below.
 var uncoveredShapes = []adversarialCase{
 	{dir: "revshell-node-execvar", axis: axes.Security, atMost: "A",
-		why: "reRevShellExec matches only literal shell tokens; a socket-derived exec (child_process.exec(data)) has no /bin/sh literal, so the PAIR carrier's shell half is unrecognised — a known gap, see ADR-0009."},
+		why: "reRevShellExec matches only literal shell tokens; a socket-derived exec (child_process.exec(data)) has no /bin/sh literal, so the PAIR carrier's shell half is unrecognised — a known gap."},
 	{dir: "revshell-devtcp-splitfd", axis: axes.Security, atMost: "A",
-		why: "SELF recognises only >&, <>, 0>&1 etc. on /dev/tcp (plain >/< are omitted to spare benign port probes), and /dev/tcp is not a PAIR socket signal — a known gap, see ADR-0009."},
+		why: "SELF recognises only >&, <>, 0>&1 etc. on /dev/tcp (plain >/< are omitted to spare benign port probes), and /dev/tcp is not a PAIR socket signal — a known gap."},
 
 	// --- SD-004: the home-variable spelling table matches literal byte
 	// sequences (`~/`, `$HOME/`, `${HOME}/`), so a quote inserted inside the
@@ -277,7 +277,7 @@ var uncoveredShapes = []adversarialCase{
 	// adding `"$HOME"/` (and, by the same reasoning, `"${HOME}"/`) as a
 	// fourth homePrefixes entry, measured first. ---
 	{dir: "sd004-quoted-home-variable", axis: axes.PermissionHygiene, atMost: "A",
-		why: "\"$HOME\"/.ssh/id_rsa reads the identical private key as $HOME/.ssh/id_rsa once the shell expands it, but credentialPathSpellings has no entry with a quote spliced into the byte sequence, so the literal-match table never sees it — a known gap, see ADR-0013."},
+		why: "\"$HOME\"/.ssh/id_rsa reads the identical private key as $HOME/.ssh/id_rsa once the shell expands it, but credentialPathSpellings has no entry with a quote spliced into the byte sequence, so the literal-match table never sees it — a known gap."},
 }
 
 // knownGapCases are shapes a rule DOES find and a suppression then drops or
@@ -304,11 +304,11 @@ var knownGapCases = []adversarialCase{
 	{dir: "gap-sd013-negation-phrasing", axis: axes.Security, atMost: "A",
 		why: "the same word-order test as SD-004's: prohibition phrasing left of the shell-profile mention releases the line, and the attacker writes the phrasing. Closed only by reading the sentence, not its word order — see the reNegatedGuidance tradeoff in access_control.go"},
 	{dir: "gap-sd002-zwj-per-line-budget", axis: axes.Security, atMost: "A",
-		why: "the cap is per line and there is deliberately no file-level cap, so a file of N lines carries 4N exempt joiners. Kept open on purpose: each bit costs the author a visible run of five pictographs, so a payload of any length is a wall of emoji rather than a covert channel, and a file-level cap would make a long emoji-heavy document start firing on its later lines for reasons invisible in those lines"},
+		why: "the cap is per line and there is deliberately no file-level cap. Kept open on purpose: an exempted joiner costs the author a visible run of pictographs, so anything of useful length is a wall of emoji and visible on its face, and a file-level cap would make a long emoji-heavy document start firing on its later lines for reasons invisible in those lines"},
 	{dir: "gap-sd007-bare-url-in-prose", axis: axes.Security, atMost: "A",
-		why: "a bare URL in a doc file is silent unless its host is a routable IP literal, because escalating on suspiciousEndpoint's full predicate measured as noise on both sides of the label — 37 benign findings against 28 malicious. Closing it needs a predicate that separates a link from an instruction, which nothing in the engine has; the routable-IP arm is the part that was measurable"},
+		why: "a bare URL in a doc file is silent unless its host is a routable IP literal, because escalating on suspiciousEndpoint's full predicate is noise on both sides of the label. Closing it needs a predicate that separates a link from an instruction, which nothing in the engine has; the routable-IP arm is the part that was measurable"},
 	{dir: "gap-sd003-sibling-skill-anchor", axis: axes.PermissionHygiene, atMost: "A",
-		why: "the walk is anchored at the file's own depth below its skill root, so a file one level down always gets exactly one free climb and can read a sibling skill's manifest. Kept open on purpose: the file-relative anchor is the only anchor a static scanner has, narrowing it would mean guessing the agent's working directory, and benign in-package references are written against the same anchor — ADR-0011"},
+		why: "the walk is anchored at the file's own depth below its skill root, so a file one level down always gets exactly one free climb and can read a sibling skill's manifest. Kept open on purpose: the file-relative anchor is the only anchor a static scanner has, narrowing it would mean guessing the agent's working directory, and benign in-package references are written against the same anchor"},
 	{dir: "gap-sd008-hash-marker-on-line", axis: axes.Security, atMost: "A",
 		why: "reHashLine and reSRIHash are tested against the whole LINE, so any trailing `# sha256:` comment releases the token beside it — the attacker writes the comment. Closed by requiring the hash marker to sit LEFT of the base64 token (the position test reNegatedGuidance already uses twice in this engine), which is an engine behaviour change and needs the benign cost measured on the corpus first. Left open here on evidence: a blob that is never decoded is not a payload, and every decode step trips reBase64Command, reBase64Decode or SD-001 independently — verified, the same package with an `eval $(… base64 --decode)` line grades F with this comment in place"},
 	{dir: "gap-sd008-hex-blob-on-line", axis: axes.Security, atMost: "A",

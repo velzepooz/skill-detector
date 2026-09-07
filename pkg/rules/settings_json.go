@@ -9,7 +9,7 @@ import (
 )
 
 // claudeSettings is a minimal decoder for the .claude/settings.json schema.
-// Only fields used by SP-1 rules are populated.
+// Only fields used by the rules here are populated.
 type claudeSettings struct {
 	Permissions struct {
 		Allow []string `json:"allow"`

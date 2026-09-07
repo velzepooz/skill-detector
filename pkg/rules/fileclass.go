@@ -7,7 +7,7 @@ import (
 	"github.com/velzepooz/skill-detector/pkg/model"
 )
 
-// File-class predicates used by the new SP-1 rule packs to decide whether
+// File-class predicates used by the rule packs to decide whether
 // the file at ctx.Path is one they should inspect. Rules check these inside
 // Match() because the existing registry dispatches on extension alone.
 
@@ -113,7 +113,7 @@ func IsMCPConfig(path string) bool {
 }
 
 // IsSkillManifest returns true for SKILL.md or skill.yaml — the original
-// product scope before SP-1 expanded it.
+// product scope before it was expanded.
 func IsSkillManifest(path string) bool {
 	base := filepath.Base(filepath.ToSlash(path))
 	return base == "SKILL.md" || base == "skill.yaml"

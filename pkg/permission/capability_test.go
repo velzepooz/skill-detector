@@ -9,7 +9,7 @@ import (
 
 // Every registered rule must be classified: either it maps to capabilities, or
 // it is explicitly listed as capability-free. Without this, a new rule silently
-// stops contributing to the permissions surface (engine review F-08).
+// stops contributing to the permissions surface.
 func TestCapabilityTableCoversEveryRegisteredRule(t *testing.T) {
 	registered := make(map[string]bool)
 	for _, r := range rules.DefaultRegistry().All() {
@@ -67,7 +67,7 @@ func TestExtract_CapabilityBearingRules(t *testing.T) {
 	}
 }
 
-// SD-022 is the concrete regression from F-08: DNS exfiltration carries no
+// SD-022 is the concrete regression this guards: DNS exfiltration carries no
 // http(s):// URL, so the domain-mining path cannot fire, but the finding is
 // still outbound network traffic.
 func TestExtract_DNSExfiltrationInfersNetworkWithoutURL(t *testing.T) {

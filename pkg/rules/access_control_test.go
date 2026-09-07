@@ -559,9 +559,8 @@ func TestSD004_SSHPrivateKeyStillFlagged(t *testing.T) {
 	}
 }
 
-// Review round, Task 6: three constructible bypasses in the exemptions
-// above, all confirmed against the shipped commit (ac31d03) before being
-// closed. skill-detector is a public repo — these regexes ship where an
+// Three constructible bypasses in the exemptions above, all confirmed
+// against the shipped commit (ac31d03) before being closed. skill-detector is a public repo — these regexes ship where an
 // attacker can read them, so each hole below is closed and pinned with a
 // regression test so it stays closed.
 
@@ -794,7 +793,7 @@ func TestPathTraversalOtherBranchesUnaffected(t *testing.T) {
 // credentialPaths once held literal `~/`-spelled byte slices, so a credential
 // read written through the home-directory variable produced zero findings
 // while its `~/` twin graded permission_hygiene F. The four lines below pin
-// every spelling in homePrefixes.
+// the variable spellings.
 func TestSD004_VariableSpelledCredentialPathsDetected(t *testing.T) {
 	for _, tc := range []struct {
 		name string

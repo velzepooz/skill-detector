@@ -776,7 +776,7 @@ func TestE2E_FailOnInfo_AllMaliciousExit2(t *testing.T) {
 
 // --- E2E: Deterministic Output ---
 
-// --- E2E: Context Expected & Override Tests (Story 5.4) ---
+// --- E2E: Context Expected & Override Tests ---
 
 func TestE2E_ContextExpected_TextOutput(t *testing.T) {
 	dir := t.TempDir()

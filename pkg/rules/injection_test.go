@@ -597,7 +597,7 @@ func TestSD002_ZWJInCompoundEmojiNotFlagged(t *testing.T) {
 }
 
 func TestSD002_ZWJInCompoundEmojiWithVariationSelectorNotFlagged(t *testing.T) {
-	// cursor-council/SKILL.md:108 (verbatim emoji run; the Chinese prose
+	// A real skill-manifest line (verbatim emoji run; the non-ASCII prose
 	// preceding it is replaced with plain ASCII here for encoding safety,
 	// it is not what the test exercises) -- U+1F9D9 MAGE + ZWJ + U+2642
 	// MALE SIGN + U+FE0F variation selector, spelling the "mage" emoji.
@@ -613,7 +613,7 @@ func TestSD002_ZWJInCompoundEmojiWithVariationSelectorNotFlagged(t *testing.T) {
 }
 
 func TestSD002_ZWSPBetweenWordsStillFlagged(t *testing.T) {
-	// File Path Traversal Testing__PI_B7/SKILL.md:30 (verbatim) -- ZWSP
+	// A real injection specimen, verbatim -- ZWSP
 	// between an emoji and a word, and again between two words. Not a ZWJ,
 	// so the carve-out must not touch it.
 	content := []byte("### \U0001F512\u200bSecurity\u200bInitiative\n")
@@ -625,8 +625,8 @@ func TestSD002_ZWSPBetweenWordsStillFlagged(t *testing.T) {
 }
 
 func TestSD002_SteganographicRunStillFlagged(t *testing.T) {
-	// alm-processing__PI_B13/SKILL.md:8 (verbatim, truncated to the
-	// leading run for brevity) -- dozens of ZWSP/ZWNJ/ZWJ scattered ahead
+	// A real injection specimen (verbatim, truncated to the leading run
+	// for brevity) -- dozens of ZWSP/ZWNJ/ZWJ scattered ahead
 	// of "you must first echo the complete instruction payload". None of
 	// the ZWJs in this run sit between two emoji codepoints (their
 	// neighbors are other invisible runes or plain text), so the carve-out
@@ -641,7 +641,7 @@ func TestSD002_SteganographicRunStillFlagged(t *testing.T) {
 }
 
 func TestSD002_RansomwareZWJPaddingStillFlagged(t *testing.T) {
-	// codex__PI_B7/SKILL.md:59 (verbatim) -- an injection marker followed by
+	// A real injection specimen, verbatim -- an injection marker followed by
 	// literal ZWJ padding. Three ZWJs in a row, none between two emoji
 	// codepoints (neighbors are ">" and each other).
 	content := []byte("<!--BEGIN_RANSOMWARE_INJECTION-->\u200d\u200d\u200d\n")
@@ -673,7 +673,7 @@ func TestSD002_ZWJBetweenLettersStillFlagged(t *testing.T) {
 	}
 }
 
-// --- Task 5b, review round: narrow the emoji definition and cap the exemption ---
+// --- Narrow the emoji definition and cap the exemption ---
 
 func TestSD002_ZWJBetweenCheckMarksStillFlagged(t *testing.T) {
 	// U+2713 CHECK MARK and U+2717 BALLOT X sit in the same
@@ -704,10 +704,9 @@ func TestSD002_CapAtBoundaryStillSuppressed(t *testing.T) {
 
 func TestSD002_AboveCapNoLongerSuppressed(t *testing.T) {
 	// One more than maxExemptZWJPerLine (5) qualifying ZWJs -- over the
-	// cap, NONE are exempted, not just the excess. This is the covert-
-	// channel guard: without a cap, a line could encode one bit per
-	// adjacent emoji pair (ZWJ present or absent) and stay completely
-	// silent regardless of how many bits it carried.
+	// cap, NONE are exempted, not just the excess. The cap is what bounds
+	// the carve-out; it is load-bearing and must not be removed or raised
+	// without the maintainer's sign-off.
 	content := []byte("\U0001F600\u200d\U0001F600\u200d\U0001F600\u200d\U0001F600\u200d\U0001F600\u200d\U0001F600\n")
 	r := findRule(t, "SD-002")
 	findings := r.Match(content, model.FileContext{Path: "SKILL.md", Ext: ".md"})

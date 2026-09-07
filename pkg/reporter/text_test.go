@@ -716,7 +716,7 @@ func TestTextReporter_DefaultCategoryGroupingSorted(t *testing.T) {
 	}
 }
 
-// --- Permission formatting tests (Task 1) ---
+// --- Permission formatting tests ---
 
 func TestFormatInlinePermissions_FilesystemOnly(t *testing.T) {
 	perms := []model.Permission{
@@ -809,7 +809,7 @@ func TestFormatInlinePermissions_DeterministicOrder(t *testing.T) {
 	}
 }
 
-// --- Explanation builder tests (Task 2) ---
+// --- Explanation builder tests ---
 
 func TestBuildExplanation_CredentialsAndNetwork(t *testing.T) {
 	perms := []model.Permission{
@@ -902,7 +902,7 @@ func TestBuildExplanation_Truncation(t *testing.T) {
 	}
 }
 
-// --- Integration tests: permissions in Report() output (Task 3 & 4) ---
+// --- Integration tests: permissions in Report() output ---
 
 func TestTextReporter_CleanScan_WithPermissions(t *testing.T) {
 	r := &TextReporter{Theme: NewTheme(true)}
@@ -1345,7 +1345,7 @@ func TestTheme_ConfidenceStyle(t *testing.T) {
 	}
 }
 
-// --- Expected context tests (Story 5.3) ---
+// --- Expected context tests ---
 
 func TestTextReporter_ExpectedFinding(t *testing.T) {
 	r := &TextReporter{Theme: NewTheme(true)}
@@ -1466,7 +1466,7 @@ func TestTextReporter_AllExpected_StillShown(t *testing.T) {
 	}
 }
 
-// --- Golden file tests (Story 5.4) ---
+// --- Golden file tests ---
 
 func TestTextReporter_Golden_CleanScan(t *testing.T) {
 	r := &TextReporter{Theme: NewTheme(true)}

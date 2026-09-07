@@ -41,7 +41,7 @@ var caps = map[axes.Axis]map[model.Severity]axes.Grade{
 
 // rationaleTemplate produces a per-grade rationale for a given (axis, severity)
 // using the top rule description. Wire-stable strings — change requires
-// a checksum bump (Plan Task 22).
+// a checksum bump.
 func rationaleTemplate(axis axes.Axis, sev model.Severity, topDescription string) string {
 	switch sev {
 	case model.SeverityCritical:

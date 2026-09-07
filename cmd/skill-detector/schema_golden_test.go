@@ -18,8 +18,7 @@ var updateSchemaGolden = flag.Bool("update-schema-golden", false, "rewrite the s
 
 // The JSON wire format is versioned by model.SchemaVersion. This golden holds
 // real `scan --format json` output, so any change to the emitted shape shows up
-// as a diff here; the version check below then forces the bump to be deliberate
-// (engine review F-10).
+// as a diff here; the version check below then forces the bump to be deliberate.
 func TestScanJSONOutputMatchesSchemaGolden(t *testing.T) {
 	var stdout bytes.Buffer
 	cmd := newRootCmd()
@@ -72,7 +71,7 @@ func TestScanJSONOutputMatchesSchemaGolden(t *testing.T) {
 
 // Each schema version is pinned to one output shape. Re-blessing the golden
 // after a shape change without bumping model.SchemaVersion collides with the
-// recorded fingerprint and fails here — that is the coupling F-10 found missing.
+// recorded fingerprint and fails here — that coupling is the point of this test.
 func TestSchemaShapeIsPinnedToVersion(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("testdata", "schema_output.golden")) // #nosec G304 — fixed test path
 	if err != nil {

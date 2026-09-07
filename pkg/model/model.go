@@ -192,7 +192,7 @@ type Permission struct {
 	Details []string `json:"details"`
 }
 
-// AxisResult — per-axis grade from the SP-1 multi-axis trust score work.
+// AxisResult — per-axis grade from the multi-axis trust score.
 type AxisResult struct {
 	Grade           axes.Grade       `json:"grade"`
 	Rationale       string           `json:"rationale"`

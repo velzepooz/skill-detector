@@ -104,7 +104,7 @@ func TestRelativeRefStaysInSkill(t *testing.T) {
 		// test that silently proves nothing is worse than one that says so.
 		{"dots embedded in a longer segment", `cat ../a..b/../../outside/x`, nested, false},
 
-		// --- filter-bypass forms: must stay flagged (A4 is NOT shipped) ---
+		// --- filter-bypass forms: must stay flagged ---
 		{"dot-run bypass", `....//....//etc/passwd`, nested, false},
 		{"interleaved dot bypass", `..././..././etc/passwd`, nested, false},
 

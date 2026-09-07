@@ -449,7 +449,7 @@ func TestScanCmd_UnsupportedFormat(t *testing.T) {
 	}
 }
 
-// --- CLI integration tests for config flags (Story 4.1) ---
+// --- CLI integration tests for config flags ---
 
 func TestScanCmd_DefaultThresholdCritical(t *testing.T) {
 	// No config, no --fail-on flag → default Critical threshold.
@@ -568,7 +568,7 @@ func TestScanCmd_MalformedConfigInScanDir(t *testing.T) {
 	}
 }
 
-// --- Integration tests for rule overrides & severity customization (Story 4.2) ---
+// --- Integration tests for rule overrides & severity customization ---
 
 // writeSkillDetectorRC writes a .skill-detectorrc in dir with the given content.
 func writeSkillDetectorRC(t *testing.T, dir, content string) {
@@ -722,7 +722,7 @@ func TestScanCmd_InvalidRuleSeverity_ErrorAndExit1(t *testing.T) {
 	}
 }
 
-// --- Integration tests for allowlists (Story 4.3) ---
+// --- Integration tests for allowlists ---
 
 func TestScanCmd_NetworkAllowlist_SuppressesMatchingDomain(t *testing.T) {
 	dir := t.TempDir()
@@ -872,7 +872,7 @@ func TestScanCmd_FailOnOverridesConfig(t *testing.T) {
 	}
 }
 
-// --- Integration tests for context profiles (Story 5.3) ---
+// --- Integration tests for context profiles ---
 
 func TestScanCmd_ContextExpected_ExitCode(t *testing.T) {
 	// context: expected for SD-007 → EffSeverity=INFO → exit code NOT 2 even with --fail-on high.
@@ -1001,7 +1001,7 @@ func TestScanCmd_LegacySeverityOverride_StillWorks(t *testing.T) {
 	}
 }
 
-// --- Integration tests for --fail-on-axis flag (Plan Task 19) ---
+// --- Integration tests for --fail-on-axis flag ---
 //
 // Uses testdata/malicious/credential-theft which produces:
 //   security=D, permission_hygiene=F, transparency=A, quality=A
@@ -1181,7 +1181,7 @@ func TestCLIFailOnAxisFlag_CombinesWithFailOn(t *testing.T) {
 	}
 }
 
-// --- Integration tests for --strict-mcp flag (Plan Task 20) ---
+// --- Integration tests for --strict-mcp flag ---
 
 func TestStrictMCPDoesNotBreakChecksum(t *testing.T) {
 	// The reported ruleset checksum must be identical with and without
@@ -1252,7 +1252,7 @@ func TestCLIStrictMCPRaisesSeverity(t *testing.T) {
 	}
 }
 
-// --- Integration tests for --axes-only flag (Plan Task 21) ---
+// --- Integration tests for --axes-only flag ---
 
 func TestCLIAxesOnlyMode(t *testing.T) {
 	var stdout, stderr bytes.Buffer
@@ -1284,7 +1284,7 @@ func TestCLIAxesOnlyMode(t *testing.T) {
 	}
 }
 
-// --- Integration tests for --scan-all flag (SP-1 Task 14) ---
+// --- Integration tests for --scan-all flag ---
 
 func TestCLIScanAllFlag(t *testing.T) {
 	dir := t.TempDir()
