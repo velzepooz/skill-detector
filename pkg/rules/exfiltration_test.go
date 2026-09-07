@@ -423,18 +423,16 @@ func TestExfiltrationFixture(t *testing.T) {
 
 // --- SD-007 declared-endpoint vs sink -------------------------------------
 //
-// Measured on MalSkillBench (2026-08-24): SD-007 drove 74 of 137 false
-// positives on benign skills, firing on the API a skill exists to call —
-// `curl -X POST https://api.notion.com/v1/pages` in the SKILL.md of a Notion
-// skill. HIGH on the security axis caps such a skill at D. Rating a declared
-// endpoint as a vulnerability is a category error: what the skill says it
-// talks to belongs on transparency.
+// SD-007 was the dominant false-positive source on honest input, firing on the
+// API a skill exists to call — `curl -X POST https://api.notion.com/v1/pages`
+// in the SKILL.md of a Notion skill. HIGH on the security axis caps such a
+// skill at D. Rating a declared endpoint as a vulnerability is a category
+// error: what the skill says it talks to belongs on transparency.
 //
-// Host shape is the one signal that separates the two populations: IP
-// literals appeared in 14.8% of malicious SD-007 hits against 3.4% of benign
-// (lift 4.4). Statement structure does not — `$(...)` had lift 1.3, and an
-// environment variable in the line is *more* common in benign skills (24.5%
-// vs 3.3%), because that is how an API token reaches an Authorization header.
+// Host shape is the one signal that separates the two populations. Statement
+// structure does not — a `$(...)` substitution carries almost no signal on its
+// own, and an environment variable in the line is *more* common in honest
+// skills, because that is how an API token reaches an Authorization header.
 
 func newNetworkRule() Rule {
 	r := NewRegistry()
@@ -549,9 +547,9 @@ func TestSD007_UnknownTargetIsNotDemoted(t *testing.T) {
 }
 
 func TestSD007_DeclaredEndpointInDataFileIsTransparency(t *testing.T) {
-	// 146 SD-007 hits on benign skills came from structured data (npm
-	// lockfile registry URLs, compose files) against 2 on malicious ones. The
-	// endpoint is still reported — it is disclosure, not a defect.
+	// In the validation corpus most SD-007 hits on honest input come from
+	// structured data (npm lockfile registry URLs, compose files), and very few
+	// hostile ones do. The endpoint is still reported — it is disclosure, not a defect.
 	fs := sd007Findings(t, ".claude/skills/demo/config.yaml", "endpoint: https://api.example.com/v1/data\n")
 	if len(fs) != 1 {
 		t.Fatalf("findings = %d, want 1", len(fs))
@@ -603,12 +601,11 @@ func TestSD007_ProseVerbIsNotANetworkCall(t *testing.T) {
 
 // --- SD-008 inline base64 --------------------------------------------------
 //
-// Measured on MalSkillBench: the inline-base64 branch produced 402 findings on
-// benign skills and 171 on malicious ones, and both sides were mostly junk.
-// 322 of the benign hits were npm lockfile integrity hashes ("sha512-…"), a
-// shape that appears zero times on the malicious side. On the malicious side
-// the top matches were a blockchain address and a long filesystem path — `/`
-// is in the base64 character class, so any deep path matched.
+// The inline-base64 branch was noise on both sides of the label. Most of the
+// honest hits were npm lockfile integrity hashes ("sha512-…"), a shape not
+// seen on the hostile side of that corpus. On the hostile side the top
+// matches were a blockchain address and a long filesystem path — `/` is in the
+// base64 character class, so any deep path matched.
 
 func newBase64Rule() Rule {
 	r := NewRegistry()
@@ -700,7 +697,7 @@ func TestSD007_WrappedCommandIsOneFinding(t *testing.T) {
 	// A backslash-continued command is one statement. Reading the URL from
 	// the joined statement without skipping the lines it consumed re-judged
 	// each continuation as its own statement, so one call produced three
-	// findings — and every finding-count in the bench came from this counter.
+	// findings.
 	content := "curl -X POST \\\n  -H \"Authorization: Bearer foo\" \\\n  https://api.example.com/x\n"
 	fs := sd007Findings(t, ".claude/skills/demo/run.sh", content)
 	if len(fs) != 1 {
@@ -721,8 +718,8 @@ func TestSD007_SeparateCommandsStillCountSeparately(t *testing.T) {
 
 func TestSD008_GenuinePayloadWithSlashIsNotAPath(t *testing.T) {
 	// The path exemption was "contains / and no +/=", which is an ordinary
-	// property of real base64: measured over 20000 encodings of 30 random
-	// bytes, 24.8% were dropped by it. A path is not "has a slash" — it is
+	// property of real base64: roughly a quarter of genuine encodings were
+	// dropped by it. A path is not "has a slash" — it is
 	// several word-like segments whose case does not flip.
 	// Real encodings of random bytes that happen to contain "/" and no "+"
 	// or padding — the exact shape the old exemption discarded.
@@ -1004,8 +1001,8 @@ func TestSD007_UploadFlagNeedsNoCommandIdentity(t *testing.T) {
 }
 
 func TestSD007_StdinIsNotAFile(t *testing.T) {
-	// `-d @-` reads stdin, usually from a heredoc — it names no file. Found in
-	// the corpus alongside the real `@file` uses.
+	// `-d @-` reads stdin, usually from a heredoc — it names no file. It
+	// occurs in real skills alongside the genuine `@file` uses.
 	if exfiltratesLocalData("curl -X POST https://api.example.com/x -d @- <<'EOF'") {
 		t.Error("`-d @-` reads stdin, not a file")
 	}

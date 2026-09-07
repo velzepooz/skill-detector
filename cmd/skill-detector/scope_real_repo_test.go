@@ -14,13 +14,13 @@ import (
 // below a sanity threshold. Catches regressions where someone removes a
 // path gate or breaks gitignore handling.
 //
-// Initial threshold: < 50 findings. Calibrate downward if the gating
-// improves further; calibrate upward (with justification in the commit)
-// if a legitimately-noisy fixture is added.
+// Calibrate the threshold downward if the gating improves further;
+// calibrate upward (with justification in the commit) if a
+// legitimately-noisy fixture is added.
 func TestRealWorldRegression(t *testing.T) {
 	dir := t.TempDir()
 
-	// Populate node_modules with junk that would have flooded findings before SP-1.1.
+	// Populate node_modules with junk that an ungated scan would flood on.
 	for i := 0; i < 20; i++ {
 		nm := filepath.Join(dir, "node_modules", "pkg-"+string(rune('a'+i)))
 		if err := os.MkdirAll(nm, 0o755); err != nil {
@@ -77,8 +77,7 @@ func TestRealWorldRegression(t *testing.T) {
 		}
 	}
 
-	// Sanity threshold. Pre-SP-1.1 this would be in the tens of thousands;
-	// post-SP-1.1, agent-scoped findings should be well under 50.
+	// Sanity threshold: agent-scoped findings should stay well under this.
 	if allFindings > 50 {
 		t.Errorf("regression: too many findings (%d > 50). Path gating may have broken.", allFindings)
 	}

@@ -61,8 +61,8 @@ func TestMultiHarness_CopilotInstructions_FiresSD002AndSD004(t *testing.T) {
 	}
 }
 
-// TestMultiHarness_CursorrulesDotfile_FiresSD002 covers the dispatch gap
-// self-flagged in the original task-13 report and confirmed in review:
+// TestMultiHarness_CursorrulesDotfile_FiresSD002 covers a dispatch gap
+// found in review:
 // .cursorrules/.windsurfrules are discovered and pass IsInstructionFile, but
 // filepath.Ext(".cursorrules") returns ".cursorrules" itself (no dot beyond
 // the leading one), so registry.RulesFor(".cursorrules") returned empty

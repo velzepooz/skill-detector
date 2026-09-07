@@ -87,10 +87,10 @@ func (r *persistenceRule) Match(content []byte, ctx model.FileContext) []model.F
 				"Remove systemd references; skills should not install system services"))
 		case reShellProfile.Match(line):
 			// reDocumentaryContext and reNegatedGuidance damp threat-model prose
-			// mentioning shell profiles (dogfood FP-1). reShellInvocation vetoes
-			// the documentary damping when the "documentary" line smuggles an
-			// actual command. Bypassable by construction — see reNegatedGuidance
-			// / reDocumentaryContext comments in access_control.go for the tradeoff.
+			// mentioning shell profiles. reShellInvocation vetoes the documentary
+			// damping when the "documentary" line actually runs a command; the
+			// pairing is required, not optional — see the reNegatedGuidance and
+			// reDocumentaryContext comments in access_control.go for the tradeoff.
 			//
 			// reShellInvocation is defined in access_control.go and shared with
 			// SD-004. It is deliberately NOT the widened

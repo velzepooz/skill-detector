@@ -39,8 +39,7 @@ func TestRuleAxisMappings(t *testing.T) {
 	r := DefaultRegistry()
 	// Most categories map 1:1 to a single axis. "mcp" is the exception:
 	// SD-021 (external domain reach) is a permission_hygiene concern, while
-	// SD-024 (auto-install execution) is a transparency/disclosure concern —
-	// see the SD-024 design note in the Task 3 brief.
+	// SD-024 (auto-install execution) is a transparency/disclosure concern.
 	expected := map[string][]axes.Axis{
 		"injection":                 {axes.Security},
 		"supply chain":              {axes.Security},

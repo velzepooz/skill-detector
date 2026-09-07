@@ -688,8 +688,7 @@ func TestSD013_NegatedShellProfileNotFlagged(t *testing.T) {
 }
 
 func TestSD013_InterrogativeBulletNotFlagged(t *testing.T) {
-	// FP-1, VERBATIM from docs/dogfood/2026-05-19-sp1-dogfood.md — an interrogative
-	// bullet contains no negation word.
+	// An interrogative threat-model bullet contains no negation word.
 	content := []byte("- Could it modify files outside project directory (~/.ssh, ~/.zshrc, ~/.gitconfig)?\n")
 	r := findRule(t, "SD-013")
 	if len(r.Match(content, model.FileContext{Path: "CLAUDE.md", Ext: ".md"})) != 0 {
@@ -707,8 +706,9 @@ func TestSD013_InterrogativeBulletNotFlagged(t *testing.T) {
 // live in `reCredentialFileReader`, reachable only through
 // `invokesCommandOnCredentialLine`, which this rule does not call.
 //
-// The 906-sample bench did not catch it: no corpus sample pairs an
-// interrogative-bullet shape with one of those verbs.
+// No corpus measurement caught it: nothing in the sample pool pairs an
+// interrogative-bullet shape with one of those verbs. This test is the only
+// guard.
 func TestSD013_ReaderVerbsInInterrogativeBulletNotFlagged(t *testing.T) {
 	for _, line := range []string{
 		"- Could it read .zshrc with grep to check settings?",

@@ -10,7 +10,7 @@ import (
 	"github.com/velzepooz/skill-detector/pkg/model"
 )
 
-// --- JSON golden file tests (Story 5.4) ---
+// --- JSON golden file tests ---
 
 func TestJSONReporter_Golden_CleanScan(t *testing.T) {
 	r := &JSONReporter{}

@@ -187,7 +187,7 @@ func TestScore_EffSeverityUnchanged(t *testing.T) {
 	}
 }
 
-// --- ApplyOverrides tests (Task 7) ---
+// --- ApplyOverrides tests ---
 
 func boolPtr(b bool) *bool { return &b }
 
@@ -360,7 +360,7 @@ func TestApplyOverrides_NoMatchingRules_NoOverrideMetadata(t *testing.T) {
 	}
 }
 
-// --- Context override tests (Story 5.3) ---
+// --- Context override tests ---
 
 func TestApplyOverrides_ContextExpected(t *testing.T) {
 	cfg := &config.Config{

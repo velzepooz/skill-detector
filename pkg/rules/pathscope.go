@@ -9,15 +9,15 @@ import (
 )
 
 // A `../` reference is only traversal if it actually leaves the skill. Since
-// v0.8.0 discovery stamps every file with the skill root it belongs to
-// (ADR-0010), so the rule can resolve the reference instead of pattern-matching
-// it: a token that never takes the walk below its own skill root is an ordinary
-// in-package reference, not an escape.
+// v0.8.0 discovery stamps every file with the skill root it belongs to, so the
+// rule can resolve the reference instead of pattern-matching it: a token that
+// never takes the walk below its own skill root is an ordinary in-package
+// reference, not an escape.
 //
 // Everything here is a pure function of the FileContext it is handed. It reads
 // no files and resolves nothing against the real filesystem, which is what keeps
-// pkg/rules embeddable (ADR-0010) and what keeps discovery's scoped os.Root the
-// only thing that ever opens a path.
+// pkg/rules embeddable and what keeps discovery's scoped os.Root the only thing
+// that ever opens a path.
 //
 // The predicate is an ALLOW-list: a reference is released only when every one of
 // its segments is an ordinary, well-formed path segment and the running depth
@@ -40,23 +40,20 @@ import (
 // root, which assumes the reference resolves relative to the directory the file
 // sits in. For a script that holds only if the agent `cd`s to it (or uses
 // `$(dirname "$0")`); a shell invoked from the project root resolves the same
-// string somewhere else. The consequence is deliberate and worth stating: a file
-// one level below its skill root always gets exactly one free climb, whatever it
-// names. From `.claude/skills/evil/scripts/run.sh` the reference
-// `../victim-skill/SKILL.md` is released even though it reads a sibling skill.
-// That is accepted rather than overlooked — the file-relative anchor is the only
-// anchor a static scanner has, and benign in-package references are written
-// against it too, so narrowing it would mean guessing the agent's working
-// directory and would re-flag the whole class this predicate exists to release.
+// string somewhere else. The file-relative anchor is a deliberate choice, not
+// an oversight: it is the only anchor a static scanner has, and ordinary
+// in-package references are written against it too, so re-anchoring would mean
+// guessing the agent's working directory and would re-flag the whole class this
+// predicate exists to release. Changing the anchor needs the maintainer's
+// sign-off.
 //
 // POSIX SLASHES ONLY. Both FileContext.Path and FileContext.SkillRoot are read
 // as `/`-separated strings. Discovery stamps SkillRoot through filepath.ToSlash
-// but not Path, so on Windows the path arrives as `scripts\run.sh`, the depth
-// comes out 0 (or -1 under a nested root) and every `../` stays flagged. The
-// predicate goes inert there and SD-003 behaves exactly as it did before this
-// release: the failure direction is over-flagging, never under-flagging, so it
-// is left as a documented property rather than guessed at with a separator
-// heuristic here.
+// but not Path, so a path that does not arrive slash-separated yields no usable
+// depth and every `../` in it stays flagged — SD-003 then behaves exactly as it
+// did before this release. The failure direction is over-flagging, never
+// under-flagging, which is why this is left as a documented property rather than
+// guessed at with a separator heuristic here.
 
 // reRelativePathToken matches a run containing `../`, cut at the characters that
 // can end a shell word. It is deliberately its own pattern: widening
@@ -90,9 +87,10 @@ var reOrdinarySegment = regexp.MustCompile(`^[A-Za-z0-9._@+~-]+$`)
 // segment walk below refuses the same tokens on its own — removing this `if`
 // breaks nothing in the suite (verified by construction, not assumed). It is
 // kept as a cheap early exit and as depth: it becomes load-bearing the moment
-// reOrdinarySegment is widened, which is a live possibility (see ADR-0011's
-// residual false positives, where the ASCII-only charset is the recorded cost).
-// Widening that charset without keeping this guard would release `$HOME/../..`.
+// reOrdinarySegment is widened, which is a live possibility — the ASCII-only
+// charset is what the residual false positives this predicate accepts are the
+// price of. Widening that charset without keeping this guard would release
+// `$HOME/../..`.
 const unresolvableTokenChars = `${}%\`
 
 // referenceBoundaryChars are the characters that may stand immediately OUTSIDE
@@ -138,8 +136,8 @@ func skillRelativeDirDepth(ctx model.FileContext) int {
 	if rel == "" {
 		return -1
 	}
-	// The depth is a climb budget, so every over-count is a free climb — a
-	// false negative. pkg/rules is a published package: discovery hands us
+	// The depth is a climb budget, so every over-count widens it and must be
+	// avoided. pkg/rules is a published package: discovery hands us
 	// clean filepath.Rel output, but an embedder (skilltrust, scan-action)
 	// builds model.FileContext itself, and `./scripts/run.sh` or `a//b/run.sh`
 	// would otherwise count one separator too many. Canonicalise first, with

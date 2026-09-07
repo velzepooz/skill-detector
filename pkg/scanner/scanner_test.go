@@ -186,7 +186,7 @@ func TestScanner_EmptyDir(t *testing.T) {
 	}
 }
 
-// --- Rule filtering tests (Task 8) ---
+// --- Rule filtering tests ---
 
 // makeCfgWithDisabledRule returns a config that disables a single rule.
 func makeCfgWithDisabledRule(ruleID string) *config.Config {

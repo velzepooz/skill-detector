@@ -446,8 +446,8 @@ func TestSD004_ImperativeAccessStillFlagged(t *testing.T) {
 }
 
 func TestSD004_MarkdownTableCellNotFlagged(t *testing.T) {
-	// FP-2, VERBATIM from docs/dogfood/2026-05-19-sp1-dogfood.md — a threat-taxonomy
-	// table cell contains no negation word; negation damping alone cannot catch it.
+	// A threat-taxonomy table cell contains no negation word, so negation
+	// damping alone cannot catch it.
 	content := []byte("| Broken Access Control | Reading ~/.ssh, ~/.aws, ~/.env, credential paths | Critical |\n")
 	r := findRule(t, "SD-004")
 	if len(r.Match(content, model.FileContext{Path: "CLAUDE.md", Ext: ".md"})) != 0 {
@@ -495,14 +495,11 @@ func TestSD004_BackticksCommandTableRowStillFlagged(t *testing.T) {
 	}
 }
 
-// Task 6, SD-004: measured on the bench corpus (results-task5b.tsv), the
-// ".credentials" entry in credentialPaths is a bare byte-substring match
-// with no word boundary, so it fires inside any dotted identifier chain
-// ending in "credentials" — not only an actual `.credentials` dotfile. Four
-// benign skills hit this via `from google.oauth2.credentials import
-// Credentials` (a Python import statement naming a module, not a file
-// access) — the identical line appears verbatim in ga4, gcal-pro,
-// google-chat and google-tasks.
+// SD-004: the ".credentials" entry in credentialPaths is a bare byte-substring
+// match with no word boundary, so it fires inside any dotted identifier chain
+// ending in "credentials" — not only an actual `.credentials` dotfile. Honest
+// skills hit this via `from google.oauth2.credentials import Credentials`, a
+// Python import statement naming a module, not a file access.
 
 func TestSD004_CredentialsModuleImportNotFlagged(t *testing.T) {
 	content := []byte("from google.oauth2.credentials import Credentials\n")
@@ -512,9 +509,9 @@ func TestSD004_CredentialsModuleImportNotFlagged(t *testing.T) {
 	}
 }
 
-// Same measurement, a second shape: a Markdown bullet documenting a dotted
-// field name (`- broker.credentials.apiKey: API key/consumer key`,
-// etrade-pelosi-bot) — a reference-doc entry, not an access to the field.
+// A second shape: a Markdown bullet documenting a dotted field name
+// (`- broker.credentials.apiKey: API key/consumer key`) — a reference-doc
+// entry, not an access to the field.
 
 func TestSD004_CredentialsFieldDocBulletNotFlagged(t *testing.T) {
 	content := []byte("- broker.credentials.apiKey: API key/consumer key\n")
@@ -524,9 +521,9 @@ func TestSD004_CredentialsFieldDocBulletNotFlagged(t *testing.T) {
 	}
 }
 
-// Regression: a genuine attribute-chain credential access (Bankr x402 SDK,
-// malicious sample: `self.credentials[key_name] = {...}` storing harvested
-// keys) must still fire — the two exemptions above are narrow shapes
+// Regression: a genuine attribute-chain credential access
+// (`self.credentials[key_name] = {...}` storing harvested keys) must still
+// fire — the two exemptions above are narrow shapes
 // (import statement, doc bullet), not a blanket exemption for any
 // "x.credentials" identifier chain.
 
@@ -538,9 +535,9 @@ func TestSD004_AttributeChainCredentialsStillFlagged(t *testing.T) {
 	}
 }
 
-// Third shape, measured on the same run: an SSH *public* key file under
-// ~/.ssh/ (`# Add ~/.ssh/id_ed25519.pub to GitHub Settings`,
-// skill-from-memory) — a .pub file is meant to be shared and carries no
+// A third shape: an SSH *public* key file under
+// ~/.ssh/ (`# Add ~/.ssh/id_ed25519.pub to GitHub Settings`)
+// — a .pub file is meant to be shared and carries no
 // secret, unlike the private-key files (id_rsa, id_ed25519) the ~/.ssh/
 // pattern otherwise exists to catch.
 
@@ -562,9 +559,8 @@ func TestSD004_SSHPrivateKeyStillFlagged(t *testing.T) {
 	}
 }
 
-// Review round, Task 6: three constructible bypasses in the exemptions
-// above, all confirmed against the shipped commit (ac31d03) before being
-// closed. skill-detector is a public repo — these regexes ship where an
+// Three constructible bypasses in the exemptions above, all confirmed
+// against the shipped commit (ac31d03) before being closed. skill-detector is a public repo — these regexes ship where an
 // attacker can read them, so each hole below is closed and pinned with a
 // regression test so it stays closed.
 
@@ -769,8 +765,8 @@ func TestPathTraversalResolvesAgainstSkillRoot(t *testing.T) {
 	}
 }
 
-// The absolute-path and Windows-path branches were measured and no candidate
-// cleared the bar, so this change must leave them exactly as they were even
+// The absolute-path and Windows-path branches were evaluated and deliberately
+// left out of scope, so this change must leave them exactly as they were even
 // when the line also carries an in-package ../ reference.
 func TestPathTraversalOtherBranchesUnaffected(t *testing.T) {
 	registry := NewRegistry()
@@ -794,10 +790,10 @@ func TestPathTraversalOtherBranchesUnaffected(t *testing.T) {
 	}
 }
 
-// Programme item 8: credentialPaths held literal `~/`-spelled byte slices, so
-// a credential read written through the home-directory variable produced zero
-// findings while its `~/` twin graded permission_hygiene F. The four lines
-// below are the spec's own reproduction, confirmed against v0.9.0.
+// credentialPaths once held literal `~/`-spelled byte slices, so a credential
+// read written through the home-directory variable produced zero findings
+// while its `~/` twin graded permission_hygiene F. The four lines below pin
+// the variable spellings.
 func TestSD004_VariableSpelledCredentialPathsDetected(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -821,8 +817,8 @@ func TestSD004_VariableSpelledCredentialPathsDetected(t *testing.T) {
 // The finding names the spelling actually written, not the canonical entry:
 // a report that says `~/.ssh/` about a line reading `$HOME/.ssh/` sends the
 // reader looking for text that is not in the file. Lines spelled `~/` keep
-// their exact historical description, which is what makes the corpus
-// before/after delta a like-for-like comparison.
+// their exact historical description, so adding a spelling never changes what
+// an already-firing line reports.
 func TestSD004_FindingNamesTheSpellingWritten(t *testing.T) {
 	r := findRule(t, "SD-004")
 	fs := r.Match([]byte("cat $HOME/.ssh/id_rsa\n"), model.FileContext{Path: "SKILL.md", Ext: ".md"})

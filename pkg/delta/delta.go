@@ -85,7 +85,7 @@ func dropPaired(findings []model.Finding, pairs map[string]int) []model.Finding 
 // Compute runs on two JSON files the caller supplies, which are unvalidated and
 // may come from another producer or a hand edit. Suffixed input then ranks
 // sensibly instead of degrading to "unknown". Do not "simplify" it to a 5-value
-// rank without also constraining that input (engine review F-09).
+// rank without also constraining that input.
 func gradeRank(g axes.Grade) int {
 	if g == "" {
 		return -1

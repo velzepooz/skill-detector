@@ -113,6 +113,7 @@ the following on inference; ask the maintainer first and get a yes:
 - the default scope list, the skip-dirs, and any rule's path gate
 - demotion and suppression thresholds in any rule
 - `ScanResult.NoAgentSurface` and the result shape when a scan reads no in-scope file. A scan that checked nothing does not grade: `Axes` stays empty, and the result must not be reported, stored or displayed as a pass. It is not a missing default to fill in.
+- the adversarial suite — `cmd/skill-detector/adversarial_test.go`, its tables, and the `testdata/adversarial/` fixtures — **and the fact that it is public**. It records cases the engine does not currently catch, and the tables fail when one of them changes state. That standing signal is the point of the suite and is worth more than the concealment that dropping it would buy. Do not scrub, relax or delete any of it to reduce what this repository discloses: that trade was weighed and settled, and reversing it needs the maintainer.
 
 The reasoning behind each of these is recorded outside this repo. Absence of a
 reason in the codebase is not evidence that there isn't one.

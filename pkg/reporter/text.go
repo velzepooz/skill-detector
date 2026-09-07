@@ -116,7 +116,7 @@ func (t *TextReporter) writeTrustScoreBlock(w io.Writer, result model.ScanResult
 	for _, a := range axes.Order {
 		ar := result.Axes[a]
 		// The quality axis is a reserved slot with no rules mapped to it
-		// (ADR-0001 keeps the axis wire-stable in JSON), so an unconditional
+		// (the axis stays wire-stable in JSON regardless), so an unconditional
 		// row reads as "quality was checked: A" when nothing was checked.
 		// Hide it unless something actually drove a grade; the row reappears
 		// by itself the day a rule lands on the axis.

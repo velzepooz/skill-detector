@@ -7,7 +7,7 @@ import (
 	"github.com/velzepooz/skill-detector/pkg/model"
 )
 
-// File-class predicates used by the new SP-1 rule packs to decide whether
+// File-class predicates used by the rule packs to decide whether
 // the file at ctx.Path is one they should inspect. Rules check these inside
 // Match() because the existing registry dispatches on extension alone.
 
@@ -113,7 +113,7 @@ func IsMCPConfig(path string) bool {
 }
 
 // IsSkillManifest returns true for SKILL.md or skill.yaml — the original
-// product scope before SP-1 expanded it.
+// product scope before it was expanded.
 func IsSkillManifest(path string) bool {
 	base := filepath.Base(filepath.ToSlash(path))
 	return base == "SKILL.md" || base == "skill.yaml"
@@ -159,7 +159,8 @@ func isInAgentConfigDir(path string) bool {
 // live in them (copilot-instructions.md, mcp.json), but they are deliberately
 // NOT agent config dirs — see isInAgentConfigDir and scanner.walkableHiddenDirs.
 // A SKILL.md at a repository root would otherwise pull every CI workflow and
-// editor task file into scope, which is the noise ADR-0004 exists to prevent.
+// editor task file into scope, which is exactly the noise the default scope
+// exists to prevent.
 // The isInAgentConfigDir arm is unaffected: a .github/ nested inside .claude/
 // still reaches the rules through that arm, as it always did.
 var skillRootExcludedDirs = []string{".github/", ".vscode/"}
@@ -181,7 +182,7 @@ func inSkillRootExcludedDir(path string) bool {
 // Unlike every other predicate in this file this is NOT a path-shape test.
 // Whether some ancestor directory holds a SKILL.md is a filesystem fact and
 // cannot be decided from the path string, so the discovery pass computes it
-// once per walk and hands it over on FileContext.SkillRoot. See ADR-0010.
+// once per walk and hands it over on FileContext.SkillRoot.
 //
 // The excluded-directory check is repeated here rather than trusted from
 // discovery: pkg/rules is a published API and a caller may build a
