@@ -82,11 +82,11 @@ var emojiPictographBlocks = [...]struct{ lo, hi rune }{
 
 // isEmojiRune reports whether r is a pictograph emoji codepoint (one of the
 // emojiPictographBlocks above — covering the person/cook/mage/rocket glyphs
-// observed in the bench corpus, Task 5b predicate_lift.py SD-002) or one of
-// the explicit symbol-emoji modifiers in emojiZWJModifiers. This
-// deliberately does NOT cover regional-indicator flag pairs
-// (U+1F1E6-U+1F1FF): no sample in the corpus exercises them, so widening the
-// definition to include them would be unmeasured. Skin-tone modifiers
+// this carve-out exists for) or one of the explicit symbol-emoji modifiers in
+// emojiZWJModifiers. This deliberately does NOT cover regional-indicator flag
+// pairs (U+1F1E6-U+1F1FF): the blocks listed here are the ones the carve-out
+// was evidenced for, and widening the definition needs the maintainer's
+// sign-off. Skin-tone modifiers
 // (U+1F3FB-U+1F3FF) sit inside Miscellaneous Symbols and Pictographs and are
 // therefore covered, which is what RGI sequences like `person + tone + ZWJ +
 // profession` need — the ZWJ's left neighbour there is the tone modifier,
@@ -102,34 +102,23 @@ func isEmojiRune(r rune) bool {
 }
 
 // maxExemptZWJPerLine bounds how many ZWJ-between-emoji occurrences a
-// single line may have exempted from the invisible-rune count. Every one
-// of the 9 benign findings this carve-out targets (Task 5b,
-// predicate_lift.py SD-002, results-task5.tsv) has exactly 1 qualifying
-// ZWJ on its line — this cap keeps a wide safety margin above that
-// observed maximum (legitimate multi-join sequences like a family or
-// couple emoji commonly use 2-4 ZWJs) while still being orders of
-// magnitude below the malicious corpus's steganographic runs (17-34
-// invisible runes on one line). Review round flagged the unbounded
-// version of this carve-out as a covert channel: encode one bit per
-// adjacent emoji pair by choosing whether a ZWJ sits between them
-// (unsupported ZWJ sequences render as the two emoji side by side, so
-// <grin><U+200D><grin> and <grin><grin> look identical to a human — written
-// here in codepoints precisely because they do) — with no cap, every present
-// ZWJ was exempt and the line stayed silent regardless of how many bits
-// it carried. Beyond this cap, none of the line's qualifying ZWJs are
-// exempted — the whole line is treated as untrusted, not just the
-// excess.
+// single line may have exempted from the invisible-rune count. The lines
+// this carve-out exists for carry a single qualifying ZWJ, and the cap keeps
+// a wide margin above that (legitimate multi-join sequences like a family or
+// couple emoji commonly use several) while staying far below the run lengths
+// real zero-width smuggling needs. Review round flagged an UNBOUNDED version
+// of this carve-out as unsafe: with no cap, every qualifying ZWJ on a line
+// was exempt however many there were. Beyond this cap, none of the line's
+// qualifying ZWJs are exempted — the whole line is treated as untrusted, not
+// just the excess. The cap is load-bearing; do not remove it.
 //
-// The cap is per line, and that is all it closes. A file of 20 such lines
-// still exempts up to 80 joiners in total, so the channel is narrowed
-// rather than sealed: stated plainly because the earlier wording here
-// claimed more than the code does. There is deliberately no file-level cap.
-// Each exempted bit costs the author a visible run of emoji to hide it
-// behind — 4 bits per line, each needing its own 5-pictograph sequence — so
-// a payload of any useful length is a wall of emoji, which is not a covert
-// channel any more. A file-level cap would buy nothing against that and
-// would make a long, genuinely emoji-heavy document start firing on its
-// later lines for reasons invisible in those lines.
+// The cap is per line, and that is deliberately all it does. There is no
+// file-level cap: an exempted joiner costs the author a visible run of emoji
+// to sit behind, so anything of useful length is a wall of emoji and visible
+// on its face, while a file-level cap would make a long, genuinely
+// emoji-heavy document start firing on its later lines for reasons invisible
+// in those lines. Both the per-line cap and the absence of a file-level one
+// are deliberate; changing either needs the maintainer's sign-off.
 const maxExemptZWJPerLine = 4
 
 // zwjExemptIndices returns the indices within runes of every ZWJ character
@@ -137,8 +126,8 @@ const maxExemptZWJPerLine = 4
 // neighbors) — the standard compound-emoji spelling, not a hidden payload.
 // If more than maxExemptZWJPerLine qualify, none are exempted: past that
 // cap the whole line is treated as untrusted rather than as an unusually
-// long legitimate emoji sequence, closing the covert channel described on
-// maxExemptZWJPerLine.
+// long legitimate emoji sequence — see maxExemptZWJPerLine for why that
+// bound is load-bearing.
 func zwjExemptIndices(runes []rune) map[int]bool {
 	qualifying := make(map[int]bool)
 	for idx, ru := range runes {
@@ -290,18 +279,14 @@ func (r *promptInjectionRule) Match(content []byte, ctx model.FileContext) []mod
 				// A ZWJ strictly between two emoji codepoints is the
 				// standard Unicode ZWJ-sequence mechanism that composes
 				// e.g. person+occupation into one glyph -- how the
-				// character is spelled, not a hidden payload. Measured
-				// (predicate_lift.py, SD-002, Task 5b, results-task5.tsv):
-				// this shape is 9 of 10 benign SD-002 findings in the bench
-				// corpus (ben%/mal% = 90%/0%, clearing the >=10 bar since
-				// mal=0) and 0 of 29 malicious SD-002 findings -- the
-				// corpus's real zero-width smuggling (a steganographic run
-				// of ZWSP/ZWNJ/ZWJ, literal ZWJ padding after an injection
+				// character is spelled, not a hidden payload. It is the
+				// dominant honest shape behind SD-002's invisible-rune
+				// findings, and real zero-width smuggling (a run of
+				// ZWSP/ZWNJ/ZWJ, literal ZWJ padding after an injection
 				// marker, ZWSP between plain words) never has a ZWJ with an
 				// emoji codepoint on both sides. See zwjExemptIndices and
 				// maxExemptZWJPerLine for the codepoint set and the cap
-				// that keep this exemption from becoming an unbounded
-				// covert channel.
+				// that bound this exemption.
 			default:
 				invisible++
 			}

@@ -12,7 +12,7 @@ import (
 )
 
 // The adversarial corpus is the second gate this engine needs, and the one
-// the 906-sample bench cannot be. Corpus measurement prices what a
+// the sample-corpus bench cannot be. Corpus measurement prices what a
 // suppression COSTS; only constructed cases price what it costs to leave a
 // suppression's hole open. Every shape here is absent from MalSkillBench, so
 // a bench re-run is byte-identical whether these pass or fail.
@@ -108,7 +108,7 @@ var adversarialCases = []adversarialCase{
 	{dir: "control-tcpclient-connectivity", axis: axes.Security, atMost: "A",
 		why: "a TCPClient.Connect/.Close connectivity check has no exec/IEX/shell=True anywhere in the file to pair with the socket"},
 
-	// --- Skill root as a scope root (ADR-0010). The attack cases graded A
+	// --- Skill root as a scope root. The attack cases graded A
 	// on security before this change: the manifest above the payload was in
 	// scope and the payload was not. ---
 	{dir: "skillroot-repo-root", axis: axes.Security, atLeast: "F",
@@ -263,7 +263,7 @@ var adversarialCases = []adversarialCase{
 // the python `socket…pty.spawn` one-liner, the perl `Socket`+`exec` one-liner —
 // is closed: SD-025 now detects all three (and more; see the revshell-* and
 // control-* entries in adversarialCases above). Two narrower SD-025 gaps
-// remain and are recorded below; see ADR-0009.
+// remain and are recorded below.
 var uncoveredShapes = []adversarialCase{
 	{dir: "revshell-node-execvar", axis: axes.Security, atMost: "A",
 		why: "reRevShellExec matches only literal shell tokens; a socket-derived exec (child_process.exec(data)) has no /bin/sh literal, so the PAIR carrier's shell half is unrecognised — a known gap, see ADR-0009."},
@@ -275,7 +275,7 @@ var uncoveredShapes = []adversarialCase{
 	// token — a shape shell quoting accepts and expands identically —
 	// breaks the sequence while leaving the read itself untouched. Closed by
 	// adding `"$HOME"/` (and, by the same reasoning, `"${HOME}"/`) as a
-	// fourth homePrefixes entry, measured first — see ADR-0013. ---
+	// fourth homePrefixes entry, measured first. ---
 	{dir: "sd004-quoted-home-variable", axis: axes.PermissionHygiene, atMost: "A",
 		why: "\"$HOME\"/.ssh/id_rsa reads the identical private key as $HOME/.ssh/id_rsa once the shell expands it, but credentialPathSpellings has no entry with a quote spliced into the byte sequence, so the literal-match table never sees it — a known gap, see ADR-0013."},
 }

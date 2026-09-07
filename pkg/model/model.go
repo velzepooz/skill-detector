@@ -220,7 +220,7 @@ type FileContext struct {
 	// fact rather than a path-shape fact: whether some ancestor holds a
 	// SKILL.md cannot be decided from the path string. Discovery computes
 	// it once per walk and carries it here so pkg/rules can gate on it
-	// without walking the disk itself. See ADR-0010.
+	// without walking the disk itself.
 	//
 	// Not part of the JSON wire format: FileContext has no JSON tags and is
 	// not reachable from ScanResult, so adding this field does not move

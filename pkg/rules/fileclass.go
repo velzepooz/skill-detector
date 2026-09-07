@@ -159,7 +159,8 @@ func isInAgentConfigDir(path string) bool {
 // live in them (copilot-instructions.md, mcp.json), but they are deliberately
 // NOT agent config dirs — see isInAgentConfigDir and scanner.walkableHiddenDirs.
 // A SKILL.md at a repository root would otherwise pull every CI workflow and
-// editor task file into scope, which is the noise ADR-0004 exists to prevent.
+// editor task file into scope, which is exactly the noise the default scope
+// exists to prevent.
 // The isInAgentConfigDir arm is unaffected: a .github/ nested inside .claude/
 // still reaches the rules through that arm, as it always did.
 var skillRootExcludedDirs = []string{".github/", ".vscode/"}
@@ -181,7 +182,7 @@ func inSkillRootExcludedDir(path string) bool {
 // Unlike every other predicate in this file this is NOT a path-shape test.
 // Whether some ancestor directory holds a SKILL.md is a filesystem fact and
 // cannot be decided from the path string, so the discovery pass computes it
-// once per walk and hands it over on FileContext.SkillRoot. See ADR-0010.
+// once per walk and hands it over on FileContext.SkillRoot.
 //
 // The excluded-directory check is repeated here rather than trusted from
 // discovery: pkg/rules is a published API and a caller may build a

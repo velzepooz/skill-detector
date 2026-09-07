@@ -571,16 +571,14 @@ func TestSD002_OneFindingPerLineForZeroWidth(t *testing.T) {
 	}
 }
 
-// --- Task 5b: ZWJ inside a compound emoji is not a hidden payload ---------
+// --- ZWJ inside a compound emoji is not a hidden payload ------------------
 //
-// Bench measurement (predicate_lift.py, SD-002) found 9 of 10 benign
-// SD-002 findings in the corpus are a single U+200D ZERO WIDTH JOINER
+// Nearly every honest SD-002 finding is a single U+200D ZERO WIDTH JOINER
 // sitting strictly between two emoji codepoints -- the standard Unicode
 // mechanism that composes e.g. person+occupation into one glyph
 // (man + ZWJ + cooking = the "cook" emoji). It carries no payload; it is
-// how the character is spelled. The suppression predicate fired on 0 of 29
-// malicious SD-002 findings in the same corpus (ben%/mal% = 90%/0%,
-// clearing the >=10 bar trivially since mal=0).
+// how the character is spelled. The suppression predicate does not fire on
+// hostile SD-002 findings at all.
 //
 // Escapes below are written as explicit \u/\U codepoints, never as literal
 // non-ASCII source bytes: an emoji outside the Basic Multilingual Plane
@@ -588,7 +586,7 @@ func TestSD002_OneFindingPerLineForZeroWidth(t *testing.T) {
 // valid standalone Go escape).
 
 func TestSD002_ZWJInCompoundEmojiNotFlagged(t *testing.T) {
-	// personas/data/chef-marco.md:1 (verbatim) -- U+1F468 MAN + ZWJ +
+	// A real persona-file line, verbatim -- U+1F468 MAN + ZWJ +
 	// U+1F373 COOKING, the ZWJ-sequence spelling of the "cook" emoji.
 	content := []byte("# Chef Marco \U0001F468\u200d\U0001F373\n")
 	r := findRule(t, "SD-002")
@@ -693,9 +691,9 @@ func TestSD002_ZWJBetweenCheckMarksStillFlagged(t *testing.T) {
 
 func TestSD002_CapAtBoundaryStillSuppressed(t *testing.T) {
 	// Exactly maxExemptZWJPerLine (4) qualifying ZWJs -- at the cap, all
-	// four are still exempted. Every real benign finding this carve-out
-	// targets has exactly 1 qualifying ZWJ; this checks the cap's edge
-	// rather than the measured shape.
+	// four are still exempted. The lines this carve-out targets carry a
+	// single qualifying ZWJ; this checks the cap's edge rather than the
+	// ordinary shape.
 	content := []byte("\U0001F600\u200d\U0001F600\u200d\U0001F600\u200d\U0001F600\u200d\U0001F600\n")
 	r := findRule(t, "SD-002")
 	findings := r.Match(content, model.FileContext{Path: "SKILL.md", Ext: ".md"})

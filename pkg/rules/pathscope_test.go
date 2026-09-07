@@ -149,7 +149,7 @@ func TestRelativeRefStaysInSkill(t *testing.T) {
 		// just as well as one long reference. Refusing it is the price of
 		// refusing the split-reference escape above, and it is the safe
 		// direction — a false positive, never a missed escape. Residual FP,
-		// on purpose; recorded in ADR-0011.
+		// on purpose.
 		{"two in-package references on one line", `ln -sf ../data d && ln -sf ../logs l`, nested, false},
 
 		// --- defensive: nothing tokenised ---

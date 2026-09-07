@@ -128,7 +128,7 @@ func TestScopeInstallLayoutParity(t *testing.T) {
 	// "demo" is the RAW layout: the skill directory as it sits in a
 	// repository, which is what the hosted scanner and the Action point at.
 	// It graded A here until SKILL.md became a scope root — the helper
-	// beside the manifest was never read. See ADR-0010.
+	// beside the manifest was never read.
 	for _, layout := range []string{".claude/skills/demo", ".agents/skills/demo", "demo"} {
 		dir := t.TempDir()
 		for name, body := range skill {

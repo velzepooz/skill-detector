@@ -91,7 +91,7 @@ func inAgentDir(rel string) bool {
 // inSkillRootExcludedDir mirrors pkg/rules' inSkillRootExcludedDir (unexported
 // there, as isInAgentConfigDir is). .github/ and .vscode/ are walked for their
 // specific instruction and MCP files but must not be pulled into scope wholesale
-// by a skill manifest sitting above them — see walkableHiddenDirs and ADR-0010.
+// by a skill manifest sitting above them — see walkableHiddenDirs.
 func inSkillRootExcludedDir(rel string) bool {
 	clean := filepath.ToSlash(rel)
 	for _, d := range []string{".github/", ".vscode/"} {
@@ -140,7 +140,6 @@ func DiscoverWithOptions(root string, opts DiscoverOptions) ([]model.FileContext
 // is itself an agent file, the scan had an agent surface, NoAgentSurface never
 // fired, and the tree earned a confident A rather than a warning that nothing
 // was checked. A false clean bill is worse than an admitted blind spot.
-// See ADR-0010.
 var skillManifestNames = map[string]bool{
 	"SKILL.md":   true,
 	"skill.yaml": true,
@@ -207,7 +206,7 @@ func discoverImpl(root string, opts DiscoverOptions) ([]model.FileContext, Disco
 	// keyed by its slash-separated path relative to root ("." for root itself).
 	// A manifest the walk never reached — skipped dir, gitignored, hidden —
 	// does not create a root, which is what keeps node_modules/ and
-	// vendor/ out (ADR-0010).
+	// vendor/ out.
 	skillRoots := make(map[string]bool)
 
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {

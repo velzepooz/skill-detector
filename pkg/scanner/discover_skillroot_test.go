@@ -186,7 +186,7 @@ func TestDiscover_SkillRootDoesNotReachGithubOrVscode(t *testing.T) {
 // read, which is the exact asymmetry the skill-root rule exists to remove.
 // Worse than a blind spot: skill.yaml is itself an agent file, so the scan
 // had an agent surface, NoAgentSurface never fired, and the tree graded a
-// confident A. See ADR-0010.
+// confident A.
 func TestDiscover_SkillYAMLIsAlsoASkillRoot(t *testing.T) {
 	got := discovered(t, writeTree(t, map[string]string{
 		"skill.yaml":         "name: demo\nversion: 1.0.0\n",

@@ -12,9 +12,9 @@ import (
 //
 // The connecting idea is a socket and a shell in the same statement — a
 // socket alone is SD-007's job, and a shell alone is ordinary. Three
-// predicates, measured against MalSkillBench (measure_sd025_source.py):
-// malware 249/3944=6.31%, benign 4/4000=0.10%, lift 63.1 — the 4 benign hits
-// are security/sysadmin docs quoting revshell payloads verbatim.
+// predicates. Requiring the pair is what makes the rule specific; the
+// residual false positives are security and sysadmin docs quoting revshell
+// payloads verbatim. Do not relax the pairing.
 var (
 	// reRevShellSelf matches a single line that is already socket+shell on its
 	// own: `nc -e /bin/sh`, `bash -i >& /dev/tcp/...`, any shell stdio bound to
@@ -57,7 +57,7 @@ type reverseShellRule struct {
 // Match finds a reverse shell: either a single line that is already
 // socket+shell on its own, or a socket established somewhere in the file
 // paired with a shell exec/bind somewhere in the file — the multi-line
-// interpreter payload shape (MalSkillBench behaviour B6).
+// interpreter payload shape.
 func (r *reverseShellRule) Match(content []byte, ctx model.FileContext) []model.Finding {
 	if !InScope(ctx) {
 		return nil

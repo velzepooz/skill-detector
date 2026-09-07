@@ -1,6 +1,6 @@
 // Package triage defines the pluggable Verifier seam the scanner uses to
-// classify findings as real threats or benign examples. The engine ships an
-// inert NoopVerifier; the LLM-backed verifier lives in the hosted scanner.
+// classify findings as real threats or benign examples. The engine ships
+// NoopVerifier as the default; an embedder supplies its own implementation.
 package triage
 
 import (
@@ -46,7 +46,8 @@ type VerdictKey struct {
 
 // Verifier classifies findings for one file. Implementations MUST be
 // deterministic for the scanner's contract: the same (file, findings) input
-// should yield the same verdicts (the hosted impl achieves this via caching).
+// should yield the same verdicts — a non-deterministic backend must be made
+// deterministic by the implementation, for example by caching.
 // Return one verdict per finding and stamp Verdict.Index; verdicts may come back
 // in any order. Verdicts left unindexed are matched by (RuleID, Line), and any
 // such key claimed by two findings — or by two verdicts — is discarded in favour
