@@ -21,11 +21,11 @@ project knowledge has exactly one home; nothing here is documented twice.
 ## What is not here
 
 This project's internal engineering records are kept privately by the
-maintainer and are not part of this repository. Do not go looking for them in
-the tree or in the history — they were never committed here, and the doc set
-above is complete as it stands. If something you need to know is missing or
-looks wrong, open an issue rather than treating a gap as a file that failed to
-land; a question in an issue is the supported route and gets an answer.
+maintainer and are not part of this repository. The doc set above is what this
+repository carries, and it is complete as it stands. If something you need to
+know is missing or looks wrong, open an issue rather than treating a gap as a
+file that failed to land; a question in an issue is the supported route and
+gets an answer.
 
 ## Conventions
 

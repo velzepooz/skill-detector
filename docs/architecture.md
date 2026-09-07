@@ -24,18 +24,23 @@ Input (directory or file path)
   → Rule application                  pkg/rules
       • every Match() gates by file class first
       • baseRule.newFinding stamps the rule's axis onto each finding
+  → Confidence scoring + diagnosis    pkg/scorer.Score
+  → Config overrides                  pkg/scorer.ApplyOverrides
+      • writes EffSeverity, never Severity
+  → Allowlist filtering               pkg/scanner/allowlist.go
+      • only when a config was loaded
+  → Deterministic sort                file path, then line, then rule ID
   → Triage                            pkg/triage (seam; no-op unless a
                                       Verifier is injected)
-  → Allowlist filtering               pkg/scanner/allowlist.go
-  → Confidence scoring + diagnosis    pkg/scorer
   → Per-axis aggregation              pkg/grade → ScanResult.Axes
   → Reporting                         pkg/reporter (text | json | quiet)
   → Warnings and exit code            cmd/skill-detector
 ```
 
-Stages run in that order and each one consumes the slice the previous one
-produced. Findings are sorted deterministically — file path, then line, then
-rule ID — before triage, so output order does not depend on walk timing.
+Stages run in that order — `pkg/scanner/scanner.go` is the one place the order
+is expressed — and each consumes the slice the previous one produced. The sort
+sits ahead of triage deliberately: it fixes the batch a verifier sees and the
+order findings are reported in, so neither depends on walk timing.
 
 ## Commands
 
@@ -43,8 +48,9 @@ rule ID — before triage, so output order does not depend on walk timing.
 
 - **`scan <path>`** — the pipeline above. `main.go` builds the ruleset by
   calling `rules.DefaultRegistry()` directly. `--strict-mcp` does not swap the
-  registry: it upgrades SD-021 in place afterwards, in `applyStrictMCP`, so the
-  ruleset fingerprint stays stable.
+  registry: `applyStrictMCP` upgrades the SD-021 findings in place after the
+  scan returns and re-runs `grade.Grade` over every axis, so the ruleset
+  fingerprint stays stable.
 - **`delta <base.json> <head.json>`** — diffs two scan results, emitting
   `--format json|markdown`. A thin wrapper over `pkg/delta.Compute`.
 - **`version`** — prints the injected version, the rule count and the ruleset
@@ -61,19 +67,29 @@ unreadable path, an internal failure.
 cmd/skill-detector    main.go, delta.go, input.go — CLI entry points, flags,
                       exit-code decision
   ├── pkg/axes        the four axis names and the A–F grade type; wire-stable
+  ├── pkg/model       shared domain types
   ├── pkg/config      loads .skill-detector.yml, applies defaults,
   │                   per-rule toggles and allowlists
+  ├── pkg/rules       DefaultRegistry(), built by the CLI and handed to the
+  │                   scanner
+  ├── pkg/grade       called again by applyStrictMCP to re-grade in place
   ├── pkg/scanner     orchestration and the filesystem walk
-  │     ├── pkg/model     shared domain types
-  │     ├── pkg/rules     detection rules and file-class predicates
-  │     ├── pkg/grade     per-axis aggregator
-  │     ├── pkg/triage    pluggable verification seam
+  │     ├── pkg/rules       detection rules and file-class predicates
+  │     ├── pkg/scorer      per-finding confidence, diagnosis, config overrides
+  │     ├── pkg/grade       per-axis aggregator
+  │     ├── pkg/triage      pluggable verification seam
   │     ├── pkg/permission  capability extraction
-  │     └── pkg/config
-  ├── pkg/scorer      per-finding confidence and diagnosis; config overrides
+  │     ├── pkg/config
+  │     ├── pkg/axes
+  │     └── pkg/model
   ├── pkg/delta       scan-to-scan diff
   └── pkg/reporter    output formatting
 ```
+
+`pkg/scorer` is reached only through `pkg/scanner`; the CLI does not import it.
+`pkg/rules` imports `pkg/grade`, because the ruleset fingerprint hashes the
+grading metadata alongside the rules. Every package bottoms out at `pkg/model`
+and `pkg/axes`, which import nothing from this module beyond each other.
 
 Dependency direction is one-way: nothing under `pkg/` imports `cmd/`.
 `pkg/grade`, `pkg/delta`, `pkg/scorer` and `pkg/triage` are pure — no IO, no
@@ -91,9 +107,9 @@ version bump.
 ### `pkg/model`
 Domain types shared by every other package. `Finding` carries `RuleID`,
 `Severity`, `EffSeverity`, `Confidence`, `Axis`, `FilePath` and `Line`.
-`ScanResult` carries `Findings`, `Permissions`, `Axes`, `Warnings`,
-`FileCount`, `RuleCount`, `Version`, `Checksum`, `SchemaVersion` and
-`NoAgentSurface`. `FileContext` is the per-file metadata handed to rules and to
+`ScanResult` carries `Findings`, `Permissions`, `ConfigOverrides`, `Axes`,
+`Warnings`, `FileCount`, `RuleCount`, `Version`, `Checksum`, `SchemaVersion`
+and `NoAgentSurface`. `FileContext` is the per-file metadata handed to rules and to
 triage; it carries `SkillRoot`, and it is not part of the JSON wire format.
 
 `Severity` is an ordered enum — `Critical`, `High`, `Medium`, `Low`, `Info` —
@@ -123,9 +139,10 @@ plus allowlist entries.
   `os.Root`, and candidates are consumed in walk order.
 - `gitignore.go` is a best-effort wrapper over the root `.gitignore` only. A
   missing or malformed file is a no-op.
-- `scanner.go` orchestrates: discover, run the enabled rules, triage,
-  allowlists, score, aggregate axes, build warnings. `Options` carries
-  `ScanAll`, `Version`, `Verifier` and `TriageTimeout`.
+- `scanner.go` orchestrates, in this order: discover, run the enabled rules,
+  score, apply config overrides, apply allowlists, sort, triage, aggregate
+  axes, build warnings. `Options` carries `Config`, `Version`, `Timeout`,
+  `ScanAll`, `Verifier` and `TriageTimeout`.
 - `allowlist.go` drops findings matching configured domains and patterns.
 
 ### `pkg/rules`
@@ -169,10 +186,17 @@ error or a deadline the affected findings are left alone and stamped
 `unavailable`.
 
 ### `pkg/permission`
-Extracts the capabilities a scan implies, from the findings and the discovered
-files — what a skill claims it needs, against what it actually does. Every
-registered rule must be classified here, either mapped to a capability or
-listed as capability-free; a test over `DefaultRegistry().All()` enforces it.
+Derives the capabilities a scan implies — network reach, filesystem access,
+environment-variable access and so on — and returns them as
+`ScanResult.Permissions`. `Extract(findings, files)` works from two inputs: the
+rule IDs of the findings, mapped through a rule-to-capability table, and an
+environment-variable pattern applied to the discovered file contents. It parses
+no declared permission and compares nothing against a manifest; it describes
+what the scanned files reach for, not what they claim.
+
+Every registered rule must be classified here, either mapped to a capability or
+listed as capability-free. A test over `DefaultRegistry().All()` enforces it, so
+a new rule fails the suite until it is classified.
 
 ### `pkg/scorer`
 Does not compute an aggregate score — there is no flat 0–100 number anywhere in
@@ -224,12 +248,21 @@ overridden, for a rule whose pattern means different things in different
 contexts and where the difference is decidable at match time; the registered
 severity remains the ceiling and remains the thing the fingerprint hashes.
 
-`DefaultRegistry()` composes the rule groups. Each rule file exposes one
+`DefaultRegistry()` composes the rule groups. A rule group exposes one
 `RegisterXxxRules(registry)` function, and `DefaultRegistry()` calls them in
 turn — that function is the single wiring point, and a new rule group is
-registered there and nowhere else. `RulesFor(ext)` selects the rules whose
-`FileTypes()` contain a given extension; `All()` returns everything registered;
-`Count()` is the rule count reported in the scan result.
+registered there and nowhere else. A group is not the same thing as a file:
+some files hold a rule that a neighbouring group registers, so there are fewer
+register functions than rule files. `RegisterExfiltrationRules` registers
+SD-022 from `dns_exfil.go`, and that file exposes no register function of its
+own.
+
+`RulesFor(ext)` selects the rules whose `FileTypes()` contain a given
+extension, and `All()` returns everything registered. `Count()` is the total
+number of registered rules — it is what `version` prints, and it is not the
+number a scan reports. `ScanResult.RuleCount`, serialised as `rules_applied`,
+counts the rules that actually ran against at least one discovered file, so it
+is at most `Count()` and usually less.
 
 `Checksum()` hashes each rule's `(ID, Name, Severity, Category, Axis)`,
 sorted, together with `grade.CanonicalMetadata()`, and returns the first 16 hex

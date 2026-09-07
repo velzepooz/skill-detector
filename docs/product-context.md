@@ -52,12 +52,13 @@ Both care about the same thing: catching a problem before an agent acts on it.
 The engine reaches users three ways.
 
 - **This CLI.** Run it locally against a directory or a file. Offline,
-  deterministic, no account, no network dependency. It is also the Go library
-  the other two surfaces embed.
+  deterministic, no account, no network dependency.
 - **The hosted scanner at [skilltrust.app](https://skilltrust.app).** Point it
-  at a skill or a repository in the browser and read the report there.
+  at a skill or a repository in the browser and read the report there. It
+  embeds this repository's packages as a Go library.
 - **The GitHub Action.** Runs a scan in CI and fails the build on a threshold,
-  so a repository's agent surface is checked on every pull request.
+  so a repository's agent surface is checked on every pull request. It runs the
+  released binary rather than compiling against the library.
 
 All three run the same rules and produce the same grades. See
 [`cross-repo.md`](cross-repo.md) for how they are wired together.

@@ -1,8 +1,8 @@
 # Downstream consumers
 
 `skill-detector` is one of three repositories. It is the only one that decides
-what a scan concludes; the other two present its results to users. Anyone
-changing an exported symbol here is changing two other codebases.
+what a scan concludes; the other two present its results to users. They consume
+it in different ways, and the difference decides what a change here can break.
 
 ## The three repositories
 
@@ -10,25 +10,41 @@ changing an exported symbol here is changing two other codebases.
 |---|---|---|
 | `skill-detector` | The detection engine. The file walk, the rules, the grading, and the CLI. | Public. |
 | The hosted scanner, `skilltrust` | The web application at [skilltrust.app](https://skilltrust.app): the scan pages, the reports, the badge service and the GitHub App backend. Embeds this engine as a Go library. | Private. |
-| `scan-action`, the GitHub Action | Wraps a scan so a repository can gate its pull requests on the result. | Public. |
+| `scan-action`, the GitHub Action | Wraps a scan so a repository can gate its pull requests on the result. Contains no Go: it downloads a released binary and reads its output. | Public. |
 
 ## `pkg/` is a published API
 
-Everything under `pkg/` is imported as a library by both of the other two.
-`cmd/` is the CLI entry point and is not imported by anything.
+Everything under `pkg/` is imported as a library by the hosted scanner, which
+compiles against this module. `cmd/` is the CLI entry point and is not imported
+by anything.
 
 The consequence is direct: **every exported change under `pkg/` is
 downstream-visible.** A renamed field on `model.Finding`, a changed signature
-on `scanner.Options`, a new required argument — each is a compile break in two
-repositories that this repository's own test suite will not notice. The types
+on `scanner.Options`, a new required argument — each is a compile break in the
+hosted scanner that this repository's own test suite will not notice. The types
 that travel furthest are `model.ScanResult` and everything nested inside it,
 `axes.Axis` and `axes.Grade`, the `rules.Rule` interface and
 `rules.DefaultRegistry()`, and `delta.Compute`.
 
-The JSON wire format travels further still, because consumers read it out of
-process. Its version lives in `pkg/model.SchemaVersion` and is bumped in the
-same commit as any change to the shape of `ScanResult` — see
-[`architecture.md`](architecture.md).
+## The CLI surface is an API too
+
+The Action does not compile against this module. It pins a version, downloads
+the released binary for the runner's platform, invokes it and reads what comes
+back — so its dependency is the CLI surface rather than the Go one, and it
+breaks in ways a compiler cannot catch:
+
+- **Flag names and semantics.** A renamed or removed flag, or one whose default
+  changes, breaks the Action at runtime with no build failure anywhere.
+- **Exit codes.** The Action turns the exit code into a pass or fail verdict,
+  so the `0` / `1` / `2` / `3` contract is load-bearing outside this repository.
+- **The JSON output shape.** It parses the result rather than embedding the
+  types.
+
+The JSON wire format reaches furthest of all, because anything reading a result
+out of process depends on it — the Action, the `delta` sub-command comparing two
+stored results, and any consumer that persists a scan. Its version lives in
+`pkg/model.SchemaVersion` and is bumped in the same commit as any change to the
+shape of `ScanResult` — see [`architecture.md`](architecture.md).
 
 Two properties of `pkg/` exist because it is embedded elsewhere, and are not
 incidental: the packages that do the reasoning are pure — no IO, no global
@@ -54,10 +70,10 @@ new tag**:
 Moving all three is part of the release, not follow-up work. Until they move,
 the tag exists and no user is running it.
 
-An agent working only inside this repository cannot do any of that — two of the
-three pins are in a repository it cannot see. The correct ending for a release
-done from here is a handoff that names the three pins, not a claim that the
-work shipped.
+An agent working only inside this repository cannot do any of that — all three
+pins live in repositories it cannot see. The correct ending for a release done
+from here is a handoff that names the three pins, not a claim that the work
+shipped.
 
 ## Merging to the hosted scanner's `main` deploys production
 
