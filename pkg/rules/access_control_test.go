@@ -560,9 +560,10 @@ func TestSD004_SSHPrivateKeyStillFlagged(t *testing.T) {
 }
 
 // Three constructible bypasses in the exemptions above, all confirmed
-// against the shipped commit (ac31d03) before being closed. skill-detector is a public repo — these regexes ship where an
-// attacker can read them, so each hole below is closed and pinned with a
-// regression test so it stays closed.
+// against the shipped commit (ac31d03) before being closed. skill-detector
+// is a public repo — these regexes ship where an attacker can read them, so
+// each hole below is closed and pinned with a regression test so it stays
+// closed.
 
 // Bypass 1: reCredentialsFieldDoc had no shell-invocation veto (its sibling
 // reDocumentaryContext is vetoed by reShellInvocation; this wasn't). A

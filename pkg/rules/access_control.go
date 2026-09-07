@@ -208,8 +208,8 @@ func buildCredentialPathSpellings() []credentialPathSpelling {
 // dotted identifier chain ending in "credentials" — importing a symbol from
 // a module is not access to a credentials file; ".credentials" here is a
 // package name segment. This exact import line is a recurring shape in honest
-// skills, and no hostile sample in the validation corpus carried it, which is
-// what earns it an exemption.
+// skills, and was not seen on the hostile side, which is what earns it an
+// exemption.
 //
 // Anchored at BOTH ends (only leading/trailing whitespace tolerated), not
 // just at line start: review round found the line-start-only anchor let

