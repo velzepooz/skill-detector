@@ -159,11 +159,11 @@ var adversarialCases = []adversarialCase{
 	{dir: "sd004-modulepath-appended-command", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "reCredentialsModulePath is anchored at BOTH ends, so a second statement appended after a real import clause breaks the match instead of riding along on it"},
 	{dir: "control-sd004-credentials-import", axis: axes.PermissionHygiene, atMost: "A",
-		why: "importing a symbol from a module path ending in .credentials is not access to a credentials file — a recurring honest shape, absent from the hostile side"},
+		why: "importing a symbol from a module path ending in .credentials is not access to a credentials file — a recurring honest shape, not seen on the hostile side of the validation corpus"},
 	{dir: "sd004-fielddoc-exfil-command", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "the field-doc bullet shape is available to anyone; invokesCommandOnCredentialLine is what stops a bullet that runs a command from reading as documentation"},
 	{dir: "control-sd004-credentials-fielddoc", axis: axes.PermissionHygiene, atMost: "A",
-		why: "a reference-doc entry naming a credential field describes it rather than reaching for it — an honest shape, absent from the hostile side"},
+		why: "a reference-doc entry naming a credential field describes it rather than reaching for it — an honest shape, not seen on the hostile side of the validation corpus"},
 	{dir: "sd004-fielddoc-reader-verb", axis: axes.PermissionHygiene, atLeast: "F",
 		why: "`head -c` reads a credential as surely as `cat` does; reCredentialFileReader carries the read-and-inspect verbs that reShellInvocation deliberately omits, and widening the shared regex instead is what once turned threat-model prose into Critical SD-013 findings"},
 	{dir: "sd004-pub-token-private-read", axis: axes.PermissionHygiene, atLeast: "F",
@@ -200,7 +200,7 @@ var adversarialCases = []adversarialCase{
 	{dir: "sd002-zwj-non-pictograph", axis: axes.Security, atLeast: "F",
 		why: "a check mark takes no ZWJ — the first version of this carve-out exempted the whole U+2600-U+27BF block, which is ordinary document furniture, so the boundary is an explicit codepoint set and not a block range"},
 	{dir: "control-sd002-compound-emoji", axis: axes.Security, atMost: "A",
-		why: "person+ZWJ+profession is how the character is spelled, not a payload — it is the shape honest SD-002 findings take, and not one hostile findings take"},
+		why: "person+ZWJ+profession is how the character is spelled, not a payload — it is the shape the validation corpus's honest SD-002 findings take, and not one its hostile findings take"},
 
 	// --- SD-007's suppressions beyond the `declared` demotion the h1/h2/h3
 	// cases already cover. High on security, so a kept finding is D and a
@@ -218,7 +218,7 @@ var adversarialCases = []adversarialCase{
 	{dir: "sd008-inline-payload", axis: axes.Security, atLeast: "C",
 		why: "an 84-character mixed-case base64 run with no hash marker, no SRI key and no path shape around it is the population the inline branch exists for — this is the case every damping below is measured against"},
 	{dir: "control-sd008-lockfile-integrity", axis: axes.Security, atMost: "A",
-		why: "an npm/yarn integrity value is a checksum, not a payload — the largest single false-positive class the inline branch had, and absent from the hostile side"},
+		why: "an npm/yarn integrity value is a checksum, not a payload — the largest single false-positive class the inline branch had, and not seen on the hostile side of the validation corpus"},
 	{dir: "control-sd008-hex-address", axis: axes.Security, atMost: "A",
 		why: "an EIP-55 checksummed Ethereum address is mixed-case hex with digits, so it passes isEncodedPayload — reHexBlob is the only thing keeping this line quiet, and this is the corpus line that damping exists for"},
 

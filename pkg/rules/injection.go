@@ -281,10 +281,10 @@ func (r *promptInjectionRule) Match(content []byte, ctx model.FileContext) []mod
 				// e.g. person+occupation into one glyph -- how the
 				// character is spelled, not a hidden payload. It is the
 				// dominant honest shape behind SD-002's invisible-rune
-				// findings, and real zero-width smuggling (a run of
-				// ZWSP/ZWNJ/ZWJ, literal ZWJ padding after an injection
-				// marker, ZWSP between plain words) never has a ZWJ with an
-				// emoji codepoint on both sides. See zwjExemptIndices and
+				// findings, and the validation corpus's real zero-width
+				// smuggling (a run of ZWSP/ZWNJ/ZWJ, literal ZWJ padding
+				// after an injection marker, ZWSP between plain words) never
+				// has a ZWJ with an emoji codepoint on both sides. See zwjExemptIndices and
 				// maxExemptZWJPerLine for the codepoint set and the cap
 				// that bound this exemption.
 			default:

@@ -208,8 +208,8 @@ func buildCredentialPathSpellings() []credentialPathSpelling {
 // dotted identifier chain ending in "credentials" — importing a symbol from
 // a module is not access to a credentials file; ".credentials" here is a
 // package name segment. This exact import line is a recurring shape in honest
-// skills and does not appear in hostile ones, which is what earns it an
-// exemption.
+// skills, and no hostile sample in the validation corpus carried it, which is
+// what earns it an exemption.
 //
 // Anchored at BOTH ends (only leading/trailing whitespace tolerated), not
 // just at line start: review round found the line-start-only anchor let
@@ -238,9 +238,9 @@ var reCredentialsFieldDoc = regexp.MustCompile(`^\s*-\s+[\w.]*\.credentials[\w.]
 
 // Deliberately narrow: a bare identifier-chain reference like
 // `self.credentials[key]` or `config.credentials.apiKey` does NOT match
-// either regex above and still fires. The same "x.credentials" shape is how
-// real credential harvesting is written, so a blanket exemption for any
-// dotted chain would suppress those too. Only the two unambiguous shapes
+// either regex above and still fires. The same "x.credentials" shape appears
+// in hostile samples doing real credential harvesting, so a blanket exemption
+// for any dotted chain would suppress those too. Only the two unambiguous shapes
 // above (import statement, doc bullet) are exempted; adding a third needs the
 // maintainer's sign-off.
 

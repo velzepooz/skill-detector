@@ -480,10 +480,10 @@ func (r *base64ObfuscationRule) Match(content []byte, ctx model.FileContext) []m
 // What actually separates them is case stability. A path is several word-like
 // segments: `claude/skills/CORE/USER/Art` flips between upper and lower case
 // on ~2% of its character boundaries, where base64 of random bytes flips on
-// ~33%. The threshold sits so that it discards no genuine payload and lets
-// some paths through — the direction to err in, since a missed payload is a
-// missed attack and a surviving path is one noisy line. Do not raise it
-// without the maintainer's sign-off.
+// ~33%. The threshold discarded no genuine payload in the validation set, and
+// buys that by letting some corpus path tokens through — the direction to err
+// in, since a missed payload is a missed attack and a surviving path is one
+// noisy line. Do not raise it without the maintainer's sign-off.
 func looksLikePath(tok []byte) bool {
 	segments := 0
 	for _, s := range bytes.Split(tok, []byte("/")) {
@@ -549,8 +549,9 @@ func isDocFile(path string) bool {
 // declaration — a registry the package came from, a service a config points
 // at — and never a call this file makes.
 //
-// On honest input these files carry a large volume of SD-007 hits (npm
-// lockfile registry URLs, mostly) and next to none on hostile input.
+// In the validation corpus these files carry a large volume of SD-007 hits on
+// honest input (npm lockfile registry URLs, mostly) and very few on hostile
+// input.
 // The agent-config members of this family have dedicated rules already —
 // SD-021 for MCP endpoints, SD-017/SD-019 for settings.json — so SD-007's
 // contribution here is noise on top of coverage that exists elsewhere.

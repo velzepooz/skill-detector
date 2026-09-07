@@ -547,9 +547,9 @@ func TestSD007_UnknownTargetIsNotDemoted(t *testing.T) {
 }
 
 func TestSD007_DeclaredEndpointInDataFileIsTransparency(t *testing.T) {
-	// Most SD-007 hits on honest input come from structured data (npm
-	// lockfile registry URLs, compose files) and almost none from hostile
-	// input. The endpoint is still reported — it is disclosure, not a defect.
+	// In the validation corpus most SD-007 hits on honest input come from
+	// structured data (npm lockfile registry URLs, compose files), and very few
+	// hostile ones do. The endpoint is still reported — it is disclosure, not a defect.
 	fs := sd007Findings(t, ".claude/skills/demo/config.yaml", "endpoint: https://api.example.com/v1/data\n")
 	if len(fs) != 1 {
 		t.Fatalf("findings = %d, want 1", len(fs))
@@ -602,8 +602,8 @@ func TestSD007_ProseVerbIsNotANetworkCall(t *testing.T) {
 // --- SD-008 inline base64 --------------------------------------------------
 //
 // The inline-base64 branch was noise on both sides of the label. Most of the
-// honest hits were npm lockfile integrity hashes ("sha512-…"), a shape that
-// does not appear on the hostile side at all. On the hostile side the top
+// honest hits were npm lockfile integrity hashes ("sha512-…"), a shape not
+// seen on the hostile side of that corpus. On the hostile side the top
 // matches were a blockchain address and a long filesystem path — `/` is in the
 // base64 character class, so any deep path matched.
 
