@@ -53,8 +53,9 @@ the whole skill subtree is in scope wherever that directory sits, not just
 when it's installed under `.claude/skills/`. It honors `.gitignore` and
 skips `node_modules`, `vendor`, `dist`, `build`, `target`, `.next`, `.git`
 (a `SKILL.md` inside one of those creates no scope root either). Pass
-`--scan-all` to bypass this and walk every scannable file (v0.1.x
-behavior).
+`--scan-all` to stop honoring `.gitignore` and walk every other scannable
+file (v0.1.x behavior); the hardcoded skip-dirs above still apply, and a
+`SKILL.md` inside one of them still creates no scope root.
 
 The content rules above (injection, access control, exfiltration, etc.) run
 uniformly across every harness's instruction files — the checks aren't

@@ -188,9 +188,11 @@ error or a deadline the affected findings are left alone and stamped
 ### `pkg/permission`
 Derives the capabilities a scan implies — network reach, filesystem access,
 environment-variable access and so on — and returns them as
-`ScanResult.Permissions`. `Extract(findings, files)` works from two inputs: the
-rule IDs of the findings, mapped through a rule-to-capability table, and an
-environment-variable pattern applied to the discovered file contents. It parses
+`ScanResult.Permissions`. `Extract(findings, files)` works from three inputs:
+the rule IDs of the findings, mapped through a rule-to-capability table; an
+environment-variable pattern applied to the discovered file contents; and a
+baseline filesystem permission, added whenever any file was discovered at all.
+It parses
 no declared permission and compares nothing against a manifest; it describes
 what the scanned files reach for, not what they claim.
 

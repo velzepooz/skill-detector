@@ -24,10 +24,11 @@ import (
 
 // Grade-scale reachability.
 //
-// The published claim is that the A-F scale is not fully used: security and
-// permission_hygiene produce A/C/D/F, transparency produces A/B, and quality
-// produces A and nothing else. docs/architecture.md and docs/STATUS.md state
-// that claim to readers; this test is what stops it rotting.
+// The claim this file pins, in full: the A-F scale is not fully used. Security
+// and permission_hygiene produce A/C/D/F, transparency produces A/B, and
+// quality produces A and nothing else. That falls out of which (severity, axis)
+// pairs the engine can emit and where the cap table sends each one; this test
+// is what stops the claim rotting as either changes.
 //
 // WHY THIS LIVES IN cmd/skill-detector AND NOT IN pkg/grade
 //
@@ -100,10 +101,10 @@ type emitted struct {
 	axis axes.Axis
 }
 
-// wantReachable is the published claim, one entry per axis, sorted A..F.
-// Changing this map means the product's documented grade scale changed:
-// docs/architecture.md, docs/STATUS.md and the hosted methodology page all
-// state it. Update them in the same commit.
+// wantReachable is that claim as data, one entry per axis, sorted A..F: the
+// letters each axis can actually produce. Changing this map means the product's
+// grade scale changed, not just this test — the hosted methodology page states
+// the same scale to users, so it moves in the same commit.
 var wantReachable = map[axes.Axis][]axes.Grade{
 	axes.Security:          {axes.GradeA, axes.GradeC, axes.GradeD, axes.GradeF},
 	axes.PermissionHygiene: {axes.GradeA, axes.GradeC, axes.GradeD, axes.GradeF},
@@ -111,15 +112,14 @@ var wantReachable = map[axes.Axis][]axes.Grade{
 	axes.Quality:           {axes.GradeA},
 }
 
-// wantEmittedSeverities is the published PREMISE wantReachable's letter set
-// is derived from: which severities each axis's collectors actually emit,
-// as a set, independent of what letter each one caps to. It is not
-// redundant with wantReachable — see the comment at its call site in
+// wantEmittedSeverities is the PREMISE wantReachable's letter set is derived
+// from: which severities each axis's collectors actually emit, as a set,
+// independent of what letter each one caps to. It is not redundant with
+// wantReachable — see the comment at its call site in
 // TestGradeScaleReachability for why both assertions have to stay.
 //
-// docs/architecture.md states this as prose ("no rule anywhere emits Low or
-// Info", "nothing assigns the quality axis", "transparency only ever
-// carries Medium"); update it in the same commit as this map.
+// Stated in prose, the premise is: no rule anywhere emits Low or Info, nothing
+// assigns the quality axis, and transparency only ever carries Medium.
 var wantEmittedSeverities = map[axes.Axis]map[model.Severity]bool{
 	axes.Security:          {model.SeverityCritical: true, model.SeverityHigh: true, model.SeverityMedium: true},
 	axes.PermissionHygiene: {model.SeverityCritical: true, model.SeverityHigh: true, model.SeverityMedium: true},

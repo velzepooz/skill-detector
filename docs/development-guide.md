@@ -80,8 +80,8 @@ pkg/scanner/           → File discovery (incl. .gitignore) + scan orchestratio
 pkg/rules/             → Security rules + file-class predicates (path gates)
 pkg/triage/            → Pluggable Verifier seam (no-op unless a Verifier is injected)
 pkg/delta/             → Scan-to-scan grade movement + finding diff
-pkg/permission/        → Skill manifest permission extraction
-pkg/scorer/            → Legacy flat-score (backward compat)
+pkg/permission/        → Capabilities inferred from findings + discovered files
+pkg/scorer/            → Per-finding confidence, diagnosis, config overrides
 pkg/reporter/          → Output formatting (text with Trust Score block, JSON, quiet)
 testdata/              → Test fixtures (clean, malicious, cve, bench, edge-cases)
 ```
