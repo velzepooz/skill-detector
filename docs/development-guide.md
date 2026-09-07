@@ -32,7 +32,7 @@ make lint
 | Target      | Command                                  | Description                                   |
 | ----------- | ---------------------------------------- | --------------------------------------------- |
 | `build`     | `go build -ldflags ... -o bin/skill-detector` | Build binary with version info           |
-| `fmt`       | `go fmt ./...`                           | Format Go source with standard tab indentation |
+| `fmt`       | `gofmt -s -w .`                          | Format and simplify Go source in place        |
 | `test`      | `go test ./...`                          | Run all tests                                 |
 | `lint`      | `golangci-lint run`                      | Run linter with gosec                         |
 | `run`       | `go run ./cmd/skill-detector scan ...`   | Run against test fixture                      |
@@ -78,7 +78,7 @@ pkg/config/            → Configuration loading
 pkg/model/             → Shared domain types (Finding, ScanResult, FileContext, AxisResult)
 pkg/scanner/           → File discovery (incl. .gitignore) + scan orchestration
 pkg/rules/             → Security rules + file-class predicates (path gates)
-pkg/triage/            → Pluggable Verifier seam (inert in the CLI)
+pkg/triage/            → Pluggable Verifier seam (no-op unless a Verifier is injected)
 pkg/delta/             → Scan-to-scan grade movement + finding diff
 pkg/permission/        → Skill manifest permission extraction
 pkg/scorer/            → Legacy flat-score (backward compat)
@@ -106,33 +106,32 @@ go test -v -run TestScanner_CleanScan ./pkg/scanner/
 # Run CVE reproducer tests (Go-API + binary E2E)
 go test -v -run TestCVE ./cmd/skill-detector/
 
-# Run the recall tripwire (known attacks must still be flagged)
-go test -v -run TestBenchRecall ./cmd/skill-detector/
+# Run the curated-slice test (every case in testdata/bench must stay flagged)
+go test -v -run TestBench ./cmd/skill-detector/
 ```
 
 ### Test Fixture Structure
 
 - **`testdata/clean/`** — Skills that should pass with zero findings
 - **`testdata/malicious/`** — Agent-file-shaped fixtures that should trigger specific rules
-  - Paths must satisfy `InScope(ctx)` (e.g. `SKILL.md`, `CLAUDE.md`, `.claude/settings.json`, `.claude/scripts/<orig>.sh`, or any file sitting beside a `SKILL.md` — a skill root, ADR-0010) so path-gated rules can fire
-  - Subdirs: `credential-theft/`, `shell-injection/`, `prompt-injection/`, `exfiltration/`, `supply-chain/`, `persistence/`, `claude-md-sql/`, `claude-md-cnc/`, `settings-bash-curl/`, `settings-bypass/`, `settings-hook/`, `hooks-interp/`, `mcp-domain/`
+  - Paths must satisfy `InScope(ctx)` (e.g. `SKILL.md`, `CLAUDE.md`, `.claude/settings.json`, `.claude/scripts/<orig>.sh`, or any file sitting beside a `SKILL.md`/`skill.yaml` — a skill root) so path-gated rules can fire
+  - One subdir per rule or attack shape; `ls testdata/malicious/` lists the current set
 - **`testdata/cve/`** — Minimal CVE reproducer repos used by `cmd/skill-detector/cve_repro_test.go` for both Go-API and binary E2E paths
-- **`testdata/bench/`** — Curated malicious slice for the recall tripwire (`cmd/skill-detector/bench_recall_test.go`); every case must stay flagged
+- **`testdata/bench/`** — Curated malicious slice exercised by a bench test in `cmd/skill-detector`; every case must stay flagged
 - **`testdata/edge-cases/`** — Boundary conditions
   - `empty-skill/`, `malformed-yaml/`, `hidden-dir/`, `binary-file/`
 
 ### Adversarial Fixtures
 
 `cmd/skill-detector/testdata/adversarial/` is a second gate, and it is not a smaller copy of
-the first one. The benchmark corpus measures what a suppression **costs** — how many honest
-skills it stops over-flagging. Only a constructed case measures what leaving a suppression's
-hole open costs. The two are complementary and neither substitutes for the other.
+the fixture sets above. A corpus of real-world skills measures what a suppression **costs** —
+how many honest skills it stops over-flagging. Only a constructed case measures what a
+suppression lets through. The two are complementary and neither substitutes for the other.
 
 The reason is structural, not a matter of corpus size: skill-detector is public, an attacker
 reads the rules, and a corpus of skills written before a rule existed cannot contain an
-evasion of that rule. This is measured, not asserted — a full 906-sample corpus run came back
-byte-identical across four security fixes while review of the same branch found four
-constructible bypasses in the code those fixes touched.
+evasion of that rule. A corpus run can therefore be entirely unmoved by a change that a
+constructed case reacts to immediately.
 
 **The rule: every suppression, demotion or exemption ships with a fixture that tries to abuse
 it.** Not a unit test of the regex — a whole skill package, scanned end-to-end, asserting a
@@ -154,8 +153,8 @@ Three tables in `cmd/skill-detector/adversarial_test.go`:
 | Table | Asserts | Add a case when |
 |---|---|---|
 | `adversarialCases` | a grade on a named axis: `atLeast` (this grade or worse) for attacks, `atMost` (this grade or better) for controls | you add or narrow a suppression, or add its benign twin |
-| `uncoveredShapes` | zero findings | an attack no rule detects at all — a recorded gap that announces itself the day it starts being detected |
-| `knownGapCases` | today's **wrong** grade | a rule detects the shape and a suppression drops or demotes it, and we have decided not to close the hole yet |
+| `uncoveredShapes` | zero findings | no rule matches a shape at all — the case announces itself the day one starts to |
+| `knownGapCases` | the grade the engine produces **today** | a rule matches the shape but a suppression drops or demotes it, and the current behaviour is being recorded rather than changed |
 
 Run them with:
 
@@ -163,12 +162,12 @@ Run them with:
 go test ./cmd/skill-detector -run TestAdversarial
 ```
 
-**A `knownGapCases` assertion documents a hole. Never relax one to make it pass.** These
-cases assert behaviour we believe is wrong; they exist so that closing the hole is loud
-instead of silent. If one fails, the engine has changed and the case must be **moved** into
+**A `knownGapCases` assertion pins behaviour we do not consider final. Never relax one to
+make it pass.** These cases exist so that a change in that behaviour is loud instead of
+silent. If one fails, the engine has changed and the case must be **moved** into
 `adversarialCases` with the grade it now earns — never edited in place to accept the new
 grade, and never deleted. The same applies to `uncoveredShapes`. Each case carries a `why`
-naming the mechanism it holds and what would close it.
+naming the mechanism it holds and what would move it.
 
 ## Linting
 
@@ -188,7 +187,7 @@ Configuration is in `.golangci.yml`:
 
 1. Create a new file in `pkg/rules/` (e.g., `new_threat.go`)
 2. Implement the Rule interface defined in `pkg/rules/rule.go`. Embed `baseRule` and set the `axis` field at registration so `baseRule.newFinding` can stamp `Finding.Axis` automatically.
-3. **Add a path gate as the FIRST statement of `Match()`** — typically `if !InScope(ctx) { return nil }`. `InScope` is `IsAgentFile(path) || isInAgentConfigDir(path) || InSkillSubtree(ctx)`: an agent file by name, any file inside `.claude/`, `.codex/`, `.opencode/` and friends, or any file inside a directory containing a `SKILL.md` (ADR-0010). Use a narrower composition only when a rule must deliberately not fire on one of those classes. Without a gate, the rule will fire on every file with a matching extension and balloon the noise floor on real-world repos.
+3. **Add a path gate as the FIRST statement of `Match()`** — typically `if !InScope(ctx) { return nil }`. `InScope` is `IsAgentFile(path) || isInAgentConfigDir(path) || InSkillSubtree(ctx)`: an agent file by name, any file inside `.claude/`, `.codex/`, `.opencode/` and friends, or any file inside a directory containing a skill manifest (`SKILL.md` or `skill.yaml`). Use a narrower composition only when a rule must deliberately not fire on one of those classes. Without a gate, the rule will fire on every file with a matching extension and balloon the noise floor on real-world repos.
 4. Register the rule in `pkg/rules/registry.go::DefaultRegistry()` — the CLI builds its registry from that one function.
 5. Add test fixtures in `testdata/malicious/<rule>/` at agent-file-shaped paths (e.g. `SKILL.md`, `CLAUDE.md`, `.claude/settings.json`, `.claude/scripts/foo.sh`) so the path gate doesn't block them.
 6. Write tests in `pkg/rules/new_threat_test.go`. Each rule needs:
