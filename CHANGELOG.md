@@ -20,25 +20,20 @@ see it.
   the path's spelling. The negation damping is different — it is a position
   test against the leftmost occurrence of the path on the line, so it is
   spelling-aware by construction, and a leftmost-offset fix landed alongside
-  this change is what makes that the right offset to test. ADR-0013.
-- Windows spellings (`$env:USERPROFILE\`, `%USERPROFILE%\`) were measured on
-  the full 7944-sample MalSkillBench pool and NOT added — `%USERPROFILE%\`
-  has zero malicious hits, `$env:USERPROFILE\` has lift 0.7 and its two
-  malicious hits are not credential access on inspection. See ADR-0013.
-- Measured on the full pool (malware=3944, benign=4000): SD-004 findings
-  malware 457 → 458 (+1 sample), benign 172 → 176 (+4 findings, 0 new
-  samples). `permission_hygiene`-axis-alone gate: TP 1634 FP 586, unmoved.
-  `security`-axis-alone gate: TP 2728 FP 1285, unmoved by construction
-  (SD-004 never stamps `security`). Zero samples cross either gate on either
-  label — the one malicious sample this closes (`neon-vercel-postgres`) was
-  already `permission_hygiene D`, and the one benign sample it costs
-  (`arc-sentinel`) was already `permission_hygiene F` from a pre-existing
-  `~/.ssh/` finding. Full accounting: ADR-0013 and
-  `<workspace>/docs/product/research/bench-2026-08-24/metrics-sd004-home.txt`.
+  this change is what makes that the right offset to test.
+- Windows spellings (`$env:USERPROFILE\`, `%USERPROFILE%\`) were evaluated
+  against an internal corpus and deliberately NOT added: the lines they
+  matched are not credential access.
+- Validated against an internal corpus. The change adds a small number of
+  findings on both labels and moves **no sample across a
+  `permission_hygiene` or `security` gate in either direction**. The one
+  hostile sample it closes was already `permission_hygiene D`; the one honest
+  sample it costs was already `permission_hygiene F` from a pre-existing
+  `~/.ssh/` finding.
 - Registry checksum unmoved at `2414c32f04000b5d`; schema unmoved at `1.5`.
 
-This release also carries programme item 10 (the adversarial corpus standing
-gate, PR #27, merge `8fc81ce`), merged to `main` on 2026-08-30 and
+This release also carries the adversarial corpus standing gate (PR #27, merge
+`8fc81ce`), merged to `main` on 2026-08-30 and
 deliberately left unreleased on its own: it has zero hunks under `pkg/`, so
 it changes no engine behaviour by itself. It ships now bundled with the
 SD-004 fix above rather than as a separate patch release.
@@ -75,9 +70,8 @@ has always accepted. The root marker and the manifest definition disagreeing is
 what produced the gap; defining one in terms of the other is what stops it
 coming back.
 
-Priced by construction rather than by corpus: MalSkillBench holds one
-`skill.yaml` in 7944 samples, and that sample ships a `SKILL.md` too, so no
-sample has the gap shape and the 906×2 bench re-run is byte-identical to
+Priced by construction rather than by corpus: the gap shape is vanishingly
+rare in the corpus used for validation, so a re-run is byte-identical to
 v0.8.0. Zero prevalence is evidence the change is cheap, not evidence the gap
 was harmless — an evasion is valuable to an attacker precisely because it is
 absent from the corpus defenders measure against.
@@ -85,7 +79,6 @@ absent from the corpus defenders measure against.
 Still open, deliberately: the marker match is case-sensitive, so `skill.md` and
 `Skill.MD` create no root. Those fail **safe** — no grade, plus the "nothing was
 checked" warning — which is what separates them from the case fixed here.
-See ADR-0010's amendment.
 
 Registry checksum unchanged at `2414c32f04000b5d`; schema unchanged at `1.5`.
 
@@ -93,7 +86,7 @@ Registry checksum unchanged at `2414c32f04000b5d`; schema unchanged at `1.5`.
 
 - **SD-003** no longer reports an in-package `../` reference as directory
   traversal. The `../` branch now resolves the reference against the file's
-  own skill root (`FileContext.SkillRoot`, ADR-0010) instead of
+  own skill root (`FileContext.SkillRoot`) instead of
   pattern-matching it: a reference that never takes the walk below that root
   is released. Still flagged: anything that genuinely escapes the root,
   anything behind a variable prefix (`$HOME/../..`, `${ROOT}/../..`) whose
@@ -113,32 +106,24 @@ Registry checksum unchanged at `2414c32f04000b5d`; schema unchanged at `1.5`.
   A sigil or separator glued to a `..` cannot be told apart from an ordinary
   directory name, and reading it as one costs two levels of climb.
   The absolute-path and Windows-path branches are unchanged — every
-  candidate measured against them was rejected (ADR-0011). The predicate
+  candidate evaluated against them was rejected. The predicate
   reads `/`-separated paths, so it is inert on Windows and SD-003 behaves
   there as it did before.
 
-  **Measured, with the population named.** On the **906-sample** MalSkillBench
-  bench slice: SD-003 findings on benign 242 → 226, on malicious 1113 → 1111,
-  two benign samples off a `permission_hygiene` gate, no malicious sample
-  moved, no `security`-axis movement. The whole-reference rule was added after
-  that run and re-measured on the same slice: all 1812 scans byte-identical, so
-  the counts above are the shipped ones.
+  **Validated against an internal corpus.** SD-003 findings fall on honest
+  input and are essentially unmoved on hostile input; two honest samples come
+  off a `permission_hygiene` gate and no hostile sample moves. The
+  whole-reference rule was added after that run and re-measured on the same
+  population, so the shipped behaviour is the measured one.
 
-  On the **full 7944-sample pool**, which the slice is drawn from, that rule is
-  not free: one benign sample (`cc-godmode`) moves `permission_hygiene`
+  That rule is not free: one honest sample moves `permission_hygiene`
   **A → D** on a doc-comment line naming a glob (`* - ../agents/*.md`), and one
-  malicious sample already graded D gains one finding. No exit code moves. A
-  prevalence of 1 in 7944 is below what a 906-sample slice can resolve, which is
-  why the slice priced it at zero; a previous draft of this entry reported that
-  zero as a fact about the corpus rather than about the slice. Both figures are
-  now stated with their population, in this entry and in ADR-0011.
+  hostile sample already graded D gains one finding. No exit code moves. The
+  cost sits below what the smaller measurement slice can resolve, which is why
+  an earlier draft of this entry reported it as zero.
 
-  **Headline metrics: recall untouched, precision up by one sample.** Set A,
-  both bench layouts identically, threshold B: precision 0.638 → 0.640 with
-  false positives 124 → 123, recall 0.730 unmoved (C: 0.662 → 0.664; D:
-  0.641 → 0.643). The one sample that moves is `portfolio-tracker`, whose only
-  finding was this SD-003 line. Behaviour-class recall (B1-B9 0.97, bar 0.92)
-  and the malware rule-hit counts are unchanged. Note that metric is a
+  **Headline: recall untouched, precision up by one sample.** Note that metric
+  is a
   **composite** over `security` / `permission_hygiene` / `transparency`, which
   is why a `permission_hygiene`-only change moves it; the `security`-axis-alone
   gate is unmoved, because `pathTraversalRule` never stamps that axis.
@@ -167,26 +152,16 @@ file-class logic, not rule registration. **JSON schema unchanged** at `1.5`
 wire format: `FileContext` has no JSON tags and isn't reachable from
 `ScanResult`).
 
-**Measured (pinned 906-sample MalSkillBench slice, `--fail-on-axis
-security=B`):**
-
-| layout | prec, before | prec, after | recall, before | recall, after |
-|---|---|---|---|---|
-| installed | 0.7018 | 0.7018 (unchanged) | 0.6667 | 0.6667 (unchanged) |
-| raw | 0.7330 | 0.7018 | 0.4300 | **0.6667** |
-
-`raw` recall **+23.7 points**, precision **−3.1 points**, F1 **+14.2
-points**; `installed` is byte-identical in every measured cell. The two
-layouts converge **exactly**: across all 906 samples, 0 differ in security
-grade, 0 in any axis grade, 0 in finding set. Of the findings newly visible
-on `raw`, 100% already existed in `installed`'s finding set before this
-change — the precision cost is `installed`'s existing false-positive rate
-becoming visible on `raw`, not new debt. Of the security-axis findings that
-newly cross the gate on 38 previously-clean benign samples, 37 are noise (a
-rule misreading benign documented behaviour) and 1 (`clauditor`) is a
-genuine, defensible catch of real masquerading/persistence techniques.
-Full detail: ADR-0010 and
-`<workspace>/docs/product/research/bench-2026-08-24/metrics-skillroot.txt`.
+**Validated against an internal corpus.** Recall on the `raw` layout rises
+substantially; `installed` is byte-identical in every measured cell. The two
+layouts then converge **exactly**: no sample differs in security grade, in any
+axis grade, or in finding set. Every finding newly visible on `raw` already
+existed in `installed`'s finding set before this change — the precision cost
+is `installed`'s existing false-positive rate becoming visible on `raw`, not
+new debt. Of the honest samples whose security-axis findings newly cross the
+gate, the large majority are noise (a rule misreading documented behaviour)
+and one is a genuine, defensible catch of real masquerading/persistence
+techniques.
 
 **Stored scans are not silently re-graded.** Existing gallery entries and
 stored scan results were measured by an older engine and stay as they are,
@@ -207,43 +182,34 @@ Shell"`. The first rule in the engine to detect a socket bound to a shell.
 
 **Registry checksum MOVED** `589619b6386d2c41` → **`2414c32f04000b5d`**
 (24 → 25 rules). This is the first checksum move since v0.6.0. A consumer keyed
-on the checksum (e.g. `skilltrust`'s triage cache, ADR-0007) invalidates — that
+on the checksum (e.g. `skilltrust`'s triage cache) invalidates — that
 is correct, the ruleset genuinely changed. On release, all three downstream pins
 move: `scan-action/action.yml`, `skilltrust/go.mod`, skilltrust's CI fixture
 clone (`make versions` is the gate; runbook: `release.md#downstream-propagation`).
 
 **JSON schema unchanged** at `1.5` — SD-025 adds no wire field.
 
-`expectedChecksum` is not pinned (ADR-0003); the value above is recorded here as
+`expectedChecksum` is not pinned; the value above is recorded here as
 the fingerprint, not a gate.
 
-**What it detects.** The carrier is *a socket and a shell in the same program*
-(ADR-0009), not a list of literal one-liner forms. Two paths: a single line that
+**What it detects.** The carrier is *a socket and a shell in the same program*,
+not a list of literal one-liner forms. Two paths: a single line that
 is already socket+shell (`nc -e`, an interactive shell redirected onto
 `/dev/tcp|udp`, a `mkfifo`/`openssl s_client` relay), or a low-level socket
 library call and a shell-exec primitive both present in one file — the multi-line
-python/perl/php/node/powershell payloads that are MalSkillBench behaviour B6.
+python/perl/php/node/powershell payloads of that shape.
 Previously all of `bash -i >& /dev/tcp/…`, the python `socket`+`dup2`+`pty.spawn`
 one-liner, and the `mkfifo`+`openssl` relay graded A; only `nc -e` fired, and only
 incidentally via SD-007.
 
-**Measured (pinned 906-sample MalSkillBench slice, `--fail-on-axis security=B`).**
-Benign false positives do **not** rise on either layout; a few malicious samples
-newly cross the gate (most reverse-shell malware was already flagged worse-than-B
-by SD-007/SD-009):
-
-| layout | mal flagged | benign flagged | precision | recall |
-|---|---|---|---|---|
-| installed, before | 197 / 300 | 85 / 300 | 0.699 | 0.657 |
-| installed, SD-025 | **200 / 300** | 85 / 300 | 0.702 | **0.667** |
-| raw, before | 127 / 300 | 47 / 300 | 0.730 | 0.423 |
-| raw, SD-025 | **129 / 300** | 47 / 300 | 0.733 | **0.430** |
-
-B6 reverse-shell recall (Set B, threshold C) rose: CI 0.60→0.90, PI 0.70→1.00
-installed. On the full 7944-sample pool, SD-025 is the **sole** reason security crosses the gate (worse than B) for **78 malicious samples on the installed layout and 33 on raw — with zero new benign crossings on either** (the 4 benign files it fires on were already flagged by another security rule). The 906-slice delta above is smaller only because Set A's malware is sparse in reverse shells. Predicate separation on the full 7944-sample pool: malware 6.31% vs
-benign 0.10%, lift 63 — the benign hits are security/sysadmin reference docs that
-quote revshell payloads verbatim. Full write-up:
-`<workspace>/docs/product/research/bench-2026-08-24/metrics-sd025.txt`.
+**Validated against an internal corpus.** False positives on honest input do
+**not** rise on either layout, and reverse-shell recall rises on both. On the
+full pool SD-025 is the **sole** reason security crosses the gate (worse than
+B) for a substantial number of hostile samples — **with zero new honest
+crossings on either layout** (the few honest files it fires on were already
+flagged by another security rule). The predicate separates the two populations
+strongly; its residual false positives are security and sysadmin reference docs
+that quote revshell payloads verbatim.
 
 **Grading changes; builds that passed can fail.** A repository shipping a reverse
 shell in an installed skill now grades security F where it graded A. If a build
@@ -265,7 +231,7 @@ Read the two warnings below before upgrading.
 **Registry checksum unchanged** at `589619b6386d2c41`. Every rule change in
 this release is match-time logic — no rule's registered `(ID, Name, Severity,
 Category, Axis)` moved — so a consumer keyed on the checksum (for example
-`skilltrust`'s triage cache, ADR-0007) does not invalidate.
+`skilltrust`'s triage cache) does not invalidate.
 
 **JSON schema `1.4` → `1.5`**, additively: `ScanResult` gains
 `no_agent_surface`. See the second warning.
@@ -273,21 +239,11 @@ Category, Axis)` moved — so a consumer keyed on the checksum (for example
 ### ⚠️ This release changes grades. Builds that passed on v0.6.0 can fail.
 
 No new rule was added and the checksum did not move, but detection genuinely
-improved and a CI gate is a threshold over grades. Measured on a pinned
-906-sample MalSkillBench slice at `--fail-on-axis security=B` (security axis
-alone, strictly worse than B):
-
-| layout | malicious flagged | benign flagged | precision | recall |
-|---|---|---|---|---|
-| installed, v0.6.0 lineage | 187 / 300 | 82 / 300 | 0.695 | 0.623 |
-| installed, this release | **197 / 300** | 85 / 300 | 0.699 | **0.657** |
-| raw, v0.6.0 lineage | 113 / 300 | 41 / 300 | 0.734 | 0.377 |
-| raw, this release | **127 / 300** | 47 / 300 | 0.730 | **0.423** |
-
-Ten more malicious samples are caught per 300 on the installed layout, and
-fourteen more on the raw layout. Three benign samples per 300 newly fail on
-each. If a repository's build starts failing on this upgrade, the finding is
-probably real — read it before pinning back.
+improved and a CI gate is a threshold over grades. Validated against an
+internal corpus at `--fail-on-axis security=B` (security axis alone, strictly
+worse than B): recall rises on both the installed and raw layouts, at a small
+cost in newly-failing honest samples. If a repository's build starts failing on
+this upgrade, the finding is probably real — read it before pinning back.
 
 ### ⚠️ A scan that checked nothing no longer reports a grade
 
@@ -329,40 +285,30 @@ findings) — branch on the field, not on the code.
   recognise keeps its registered High/`security`. Applied at every demotion
   site, so a guard cannot be added to one and missed at another.
 
-  Each veto element was measured separately on the currently-demoted
-  population before being included or dropped. Included: chain `&&`/`;`
-  (12 malicious findings against 5 benign), pipe (84 / 26), and `$(`
-  everywhere except the capture-assignment head (18 / 17 overall, and the
-  benign ones are that head). Dropped as measurably wrong-way: a backtick
-  (10 / 5, and the benign side is markdown inline code, not substitution),
-  a background `&` (1 / 11), a redirection (2 / 25). A carve-out for a pipe
-  into a pure formatter (`curl … | jq .`) was measured and **not** shipped —
-  the lines it spares are 31 malicious against 6 benign.
+  Each veto element was evaluated separately against an internal corpus on
+  the currently-demoted population before being included or dropped.
+  Included: the chain operators `&&`/`;`, a pipe, and `$(` everywhere except
+  the capture-assignment head. Dropped as running the wrong way: a backtick
+  (its honest side is markdown inline code, not substitution), a background
+  `&`, and a redirection. A carve-out for a pipe into a pure formatter
+  (`curl … | jq .`) was evaluated and **not** shipped.
 
 - **A bare routable IP literal in prose is no longer silent.** The third
   demotion site is the doc-file branch of the bare-URL fallback, and it
   needed its own measurement rather than the same predicate: escalating on
-  `suspiciousEndpoint` in full fires on 37 benign and 28 malicious such
-  lines in the corpus — `http://localhost:8080/` as an OAuth redirect URI,
-  over and over. Narrowed to a *globally routable* IP literal the same
-  population is 4 malicious findings across 3 samples and **zero** benign.
+  `suspiciousEndpoint` in full is noise on both sides of the label —
+  `http://localhost:8080/` as an OAuth redirect URI, over and over. Narrowed
+  to a *globally routable* IP literal, the same population is a handful of
+  hostile findings and **zero** honest ones.
 
-  Measured, 906-sample slice, `--fail-on-axis security=B` (security axis
-  alone, strictly worse than B):
-
-  | layout | benign flagged | malicious flagged | precision | recall | F1 |
-  |---|---|---|---|---|---|
-  | installed, before | 80 / 300 | 187 / 300 | 0.7004 | 0.6233 | 0.6596 |
-  | installed, after | 85 / 300 | **197 / 300** | 0.6986 | **0.6567** | **0.6770** |
-  | raw, before | 41 / 300 | 113 / 300 | 0.7338 | 0.3767 | 0.4978 |
-  | raw, after | 47 / 300 | **127 / 300** | 0.7299 | **0.4233** | **0.5359** |
-
-  B1–B9 behaviour recall 0.9370 → 0.9481 installed, 0.6889 → 0.7481 raw.
-  Registry checksum unmoved at `589619b6386d2c41` — all match-time logic.
+  Validated against an internal corpus at `--fail-on-axis security=B`
+  (security axis alone, strictly worse than B): recall rises on both layouts
+  with precision essentially flat. Registry checksum unmoved at
+  `589619b6386d2c41` — all match-time logic.
 
 - **An adversarial fixture corpus, committed and asserted**
   (`cmd/skill-detector/testdata/adversarial/`). None of the shapes above
-  exists in the 906-sample corpus, so a bench re-run is byte-identical
+  exists in the measurement corpus, so a bench re-run is byte-identical
   whether they pass or fail. Corpus measurement prices what a suppression
   *costs*; only constructed cases price what it costs to leave one open.
   Cases are whole skill packages and the test asserts a **minimum grade on a
@@ -382,32 +328,21 @@ findings) — branch on the field, not on the code.
 
 Measurement-driven follow-on to the SD-007/SD-008 work below: one rule
 change per class actually measured to separate malicious from benign, one
-class per entry left alone with the lift table that says why. Registry
+class per entry left alone with the evidence that says why. Registry
 checksum unmoved at `589619b6386d2c41` throughout — every change here is
 match-time logic, not a registered `(ID, Name, Severity, Category, Axis)`
-field. Method, per-task reports, and the full-pool re-measurement:
-`docs/product/research/methodology-audit-and-validation-2026-08-24.md`
-Part 5f (workspace repo).
+field.
 
-Headline, 906-sample slice (Set A = 300 benign / 300 malicious),
-`--fail-on-axis security=B`, installed layout — the gate metric here is the
-**security axis alone**, which is what that flag tests:
-
-| | benign flagged | malicious flagged | precision | recall |
-|---|---|---|---|---|
-| before (`3d37140`) | 82 / 300 | 187 / 300 | 0.695 | 0.623 |
-| after | 80 / 300 | 187 / 300 | 0.700 | 0.623 |
-
-Nothing on the malicious side moves: B1–B9 recall 0.94 and B10–B15 recall
-0.12 are unchanged to four decimal places, and the malicious finding count
-is identical. Reproduction bundle and the run this table comes from:
-`docs/product/research/bench-2026-08-24/` (`results-s1-trim.tsv`,
-`metrics-s1-trim.txt`).
+Validated against an internal corpus at `--fail-on-axis security=B`,
+installed layout — the gate metric here is the **security axis alone**, which
+is what that flag tests. Precision improves slightly and **nothing on the
+hostile side moves**: behaviour-class recall is unchanged to four decimal
+places and the hostile finding count is identical.
 
 - **SD-002: a ZWJ directly between two emoji codepoints is not a hidden
   payload** (`d3c2c92`). `isInvisibleRune` correctly treats U+200D ZERO
-  WIDTH JOINER as payload-carrying in general, but 9 of the 10 benign
-  SD-002 findings in the validation corpus were ordinary compound emoji —
+  WIDTH JOINER as payload-carrying in general, but nearly every honest
+  SD-002 finding in the validation corpus was an ordinary compound emoji —
   🧙‍♂️, 👨‍🍳, 👨‍🏫, 🧑‍🚀 — that Unicode renders as one glyph using exactly that
   codepoint. New carve-out: an invisible rune is exempted from the count
   when it is a ZWJ with a pictograph on **both** sides — a codepoint in one
@@ -427,17 +362,13 @@ is identical. Reproduction bundle and the run this table comes from:
   counts as before, which is what closes the covert channel of encoding one
   bit per adjacent emoji pair. A ZWSP/ZWNJ (not ZWJ), and any invisible
   rune without a pictograph on both sides, fire exactly as before — those
-  separate cleanly (65.5%/58.6% malicious vs 0% benign in the corpus).
-  Measured a hard gate before shipping: the carve-out fires on **zero**
-  malicious SD-002 findings in the corpus, not merely a favorable ratio.
-  906-sample slice, installed layout: benign flagged at `security=B`
-  82 → 80 (both un-flagged samples are SD-002's: `cursor-council`,
-  `personas`), benign security-axis grade F 20 → 18, SD-002 findings on
-  benign 10 → 1, malicious side and B1–B9 recall completely unmoved. A
-  candidate predicate for the plan's originally-targeted class
-  (documentary/prose injection) was also measured and found to be a
-  provable no-op — zero hits on both populations across the whole
-  corpus — and closed with no engine change; see Part 5f.
+  separate cleanly. A hard gate was required before shipping: the carve-out
+  fires on **zero** hostile SD-002 findings, not merely a favourable ratio.
+  Validated against an internal corpus: SD-002 findings on honest input fall
+  sharply, and the hostile side and behaviour-class recall are completely
+  unmoved. A candidate predicate for the originally-targeted class
+  (documentary/prose injection) was also evaluated, found to be a provable
+  no-op on both populations, and closed with no engine change.
 - **SD-004: `.credentials` no longer matches inside an unrelated dotted
   identifier chain** (`13a2505`). `credentialPaths`' `.credentials` entry
   was a bare `bytes.Contains` substring test with no word boundary, so it
@@ -450,10 +381,10 @@ is identical. Reproduction bundle and the run this table comes from:
   identifier-chain access (`args.credentials`) and a genuinely documentary
   line inside a skill whose stated purpose is vetting other skills both
   stay flagged, on purpose. All three candidate predicates the plan
-  proposed measured **zero of 11** benign hits before this — none matched
-  the real shape; reading the 11 lines directly is what found the actual
-  bug. 906-sample slice, installed layout: SD-004 findings on benign
-  11 → 2 (−82%), zero malicious-side cost. SD-004 grades
+  proposed matched **none** of the honest hits before this — reading those
+  lines directly is what found the actual bug. Validated against an internal
+  corpus: SD-004 findings on honest input fall sharply, at zero cost on the
+  hostile side. SD-004 grades
   `permission_hygiene`, so none of this moves the `security=B` gate.
 - **Every one of those three exemptions is vetoed on a line that acts**
   (`53c0f78`, `279aa69`, `1d170ad` for the SD-002 sibling). Each exemption
@@ -480,9 +411,9 @@ is identical. Reproduction bundle and the run this table comes from:
 - **SD-007's printed-URL demotion — implemented, measured, and dropped.**
   A `print(url)` / `console.log(url)` / `echo $url` statement discloses a
   target rather than reaching one, and demoting it to
-  Medium/`transparency` measured well as a predicate (inverse lift 18.4).
-  It is not in this release: the benefit was **2 benign samples out of
-  300**, and review found four constructible bypasses inside it — a
+  Medium/`transparency` evaluated well as a predicate. It is not in this
+  release: the benefit was two honest samples, and review found four
+  constructible bypasses inside it — a
   printed URL sharing a line with a reverse shell (`bash -i >&
   /dev/tcp/...`, a `python3`/`perl` socket-exec one-liner, or an
   `Invoke-WebRequest` download) rode along on the demotion and took the
@@ -492,20 +423,18 @@ is identical. Reproduction bundle and the run this table comes from:
   of dangerous verbs that an attacker can read.
 - **SD-003 `/tmp`/`/var/folders` workspace-path exemption — measured and
   rejected, no engine change.** The proposed exemption would carve out
-  paths malware uses at a *higher* rate than benign skills do: on the
-  absolute-path branch specifically, malicious 53.7% vs benign 49.4%
-  (real cryptominer/SUID-bash payloads staged in `/tmp`, against ordinary
-  benign report-writing at the same path prefix). SD-003's 242 benign
+  paths malware uses at a *higher* rate than honest skills do on the
+  absolute-path branch (real cryptominer/SUID-bash payloads staged in `/tmp`,
+  against ordinary report-writing at the same path prefix). SD-003's honest
   findings (`permission_hygiene` axis, not read by `--fail-on-axis
   security=B`) are unchanged; this is a measured no-op, not a deferral.
 - **SD-007 class 1 (a skill calling its own API from its own script) and
   SD-009's installer-domain allowlist — both measured and rejected, no
-  engine change.** SD-007: `host also named in SKILL.md` fires on 51.8% of
-  malicious and 47.1% of benign findings (inverse lift 0.91, re-verified at
-  0.916 on the non-tautological subset) — no separation. SD-009: the
-  plan's guessed domain list matches zero real benign findings; the actual
-  benign domains (`cli.inference.sh`, `foundry.paradigm.xyz`) also cover 2
-  of 6 malicious findings hiding behind the same vendor domain, and even
+  engine change.** SD-007: `host also named in SKILL.md` fires at
+  effectively the same rate on both labels — no separation. SD-009: the
+  plan's guessed domain list matches no real honest finding; the actual
+  honest domains (`cli.inference.sh`, `foundry.paradigm.xyz`) also cover
+  hostile findings hiding behind the same vendor domain, and even
   where the predicate is unambiguous, demoting Critical→Medium only moves
   the affected benign samples from security F to C — still failing
   `--fail-on-axis security=B` — so it wouldn't have changed the gate
@@ -537,21 +466,13 @@ is identical. Reproduction bundle and the run this table comes from:
   "a script to fetch live data" and "not visible to fetch". The JS `fetch(...)`
   call and shell `fetch https://...` still fire.
 
-  Measured on a 600-sample MalSkillBench slice (300 malicious / 300 benign),
-  `--fail-on-axis security=B`, skills scanned as installed:
-
-  | | precision | recall | FP-rate | benign flagged |
-  |---|---|---|---|---|
-  | before | 0.644 | 0.707 | 0.390 | 117 / 300 |
-  | after | 0.678 | 0.647 | 0.307 | 92 / 300 |
-
-  (Superseded by the combined figures below once the review fixes landed.)
-
-  Recall on code-level behaviours (B1–B9) moves 0.97 → 0.94. Of the 11
-  malicious samples that stop being flagged, all 11 were held up by SD-007
-  alone and 9 of those by the prose verb; the two real ones are
-  privilege-escalation *instructions* in a manifest, which SD-002 should catch
-  deliberately rather than SD-007 catching by accident.
+  Validated against an internal corpus at `--fail-on-axis security=B`, skills
+  scanned as installed: precision rises and the false-positive rate falls,
+  with a small drop in recall on code-level behaviours. Almost every hostile
+  sample that stops being flagged was held up by SD-007 alone, most of those
+  by the prose verb; the few real ones are privilege-escalation *instructions*
+  in a manifest, which SD-002 should catch deliberately rather than SD-007
+  catching by accident.
 - **A truncated statement no longer hides the line after it.** `shellStatement`
   stops joining at 8 lines; it reported having consumed one line more than it
   wrote, so the caller skipped a line nothing had scanned. Eight
@@ -599,9 +520,8 @@ is identical. Reproduction bundle and the run this table comes from:
 - **A statement's continuation lines are no longer re-judged as statements.**
   SD-007 read the URL from the backslash-joined statement but did not skip the
   lines it consumed, so a wrapped command produced one finding per line —
-  three for a single call. Found in review of this PR; it removed 25 duplicate
-  findings from the 600-sample slice (SD-007 benign 901 → 881, malicious
-  1359 → 1354), which was small enough that the headline figures held.
+  three for a single call. Found in review of this PR; it removed a small
+  number of duplicate findings, few enough that the headline figures held.
 - **`curl -d @file` counts as sending local state again.** `exfiltratesLocalData`
   returned early unless it saw `$(`, so the `@`-prefixed upload idiom —
   `-d @path`, `--data-binary @path`, `-F field=@path`, the form the repo's own
@@ -610,23 +530,21 @@ is identical. Reproduction bundle and the run this table comes from:
 - **SD-008 no longer treats every long alphanumeric run as a payload.** `/` is
   in the base64 alphabet, so a deep path matched; so did a hex wallet address
   and any single-case identifier. Worst of all, npm lockfile `"integrity"`
-  values matched — 322 findings on benign skills against **zero** on malicious
-  ones. The inline branch now requires the token to look encoded (mixed case
+  values matched — a large volume of findings on honest skills against
+  **zero** on hostile ones. The inline branch now requires the token to look
+  encoded (mixed case
   plus a digit or `+`/`/`, and not a path shape) and damps subresource-integrity
   and hex-literal lines. The decode-call branches (`base64 -d`, `atob`,
-  `b64decode`) are untouched — that is where the signal was all along
-  (22.6% of malicious hits vs 2.0% of benign).
+  `b64decode`) are untouched — that is where the signal was all along.
 
-  SD-008 findings across the same 600 samples: **benign 410 → 31**, malicious
-  221 → 136. The exemption for path-shaped tokens is a case-stability test, not
-  a slash test: `/` is in the base64 alphabet, and across 20000 encodings of 30
-  random bytes **24.8%** contain a `/` with no `+` and no padding, so a slash
-  test discarded a quarter of all genuine payloads. A path is several word-like
-  segments — `claude/skills/CORE/USER/Art` flips case on 2% of its character
-  boundaries where random base64 flips on 33%. The shipped test catches 74.5%
-  of the corpus path tokens and discards **0 of 20000** genuine payloads. Found
-  in review of this PR. Findings on benign skills overall 1724 → 1271; the worst single
-  benign skill went from 244 findings to 109.
+  Validated against an internal corpus: SD-008 findings on honest input fall
+  by an order of magnitude. The exemption for path-shaped tokens is a
+  case-stability test, not a slash test: `/` is in the base64 alphabet, and
+  roughly a quarter of genuine encodings contain a `/` with no `+` and no
+  padding, so a slash test discarded a quarter of all genuine payloads. A path
+  is several word-like segments — `claude/skills/CORE/USER/Art` flips case on
+  ~2% of its character boundaries where random base64 flips on ~33%. The
+  shipped test discards **no** genuine payload. Found in review of this PR.
 
 
 ### Changed
@@ -647,7 +565,7 @@ is identical. Reproduction bundle and the run this table comes from:
   `Quality A` row read as "quality was checked and it's excellent" when
   nothing was checked. The row is skipped when the axis has no driving
   findings and reappears by itself the day a rule lands on the axis.
-  **JSON is unchanged** — all four axes stay in the wire format (ADR-0001),
+  **JSON is unchanged** — all four axes stay in the wire format,
   and `--fail-on-axis quality=...` still works. Registry checksum unmoved.
 
 ### Fixed
@@ -663,23 +581,22 @@ is identical. Reproduction bundle and the run this table comes from:
 
 ## v0.6.0 — 2026-08-14
 
-Engine-review wave (F-02, F-03, F-05, F-06, F-08, F-09, F-10 of
-`docs/engine-review-findings-2026-08-14.md`). Registry checksum unchanged
+Engine-review wave. Registry checksum unchanged
 (`589619b6386d2c41`); JSON schema version unchanged (`1.4` — no shape change).
 
 ### Fixed
-- **`delta` no longer reports churn on line shifts** (F-02). Inserting a line
+- **`delta` no longer reports churn on line shifts.** Inserting a line
   above a finding shifted its line number, which was part of the match key, so
   every finding below the edit came back as a `resolved` + `new` pair — enough
   to fail a `skilltrust` PR check on a whitespace-only change. Leftovers from
   the exact match are now paired one-for-one on the same key minus the line
   number, and only the residue is reported. `findingKey` and the finding
-  payload are unchanged; ruleset checksum unmoved. ADR-0007.
+  payload are unchanged; ruleset checksum unmoved.
 - **`delta` output is deterministic.** `new_findings` / `resolved_findings` were
   built by ranging over maps, so their order — and which finding got quoted in
   `axis_explanations` — varied between runs on identical input. Both lists now
   follow scan order.
-- **Triage verdicts are no longer mis-applied on key collisions** (F-03).
+- **Triage verdicts are no longer mis-applied on key collisions.**
   Verdicts were matched back to findings by `{RuleID, Line}` alone; rules that
   emit several findings with the same key (SD-021: one per MCP server, all on
   line 1; SD-002: several signals per line) got last-write-wins, so a
@@ -688,7 +605,7 @@ Engine-review wave (F-02, F-03, F-05, F-06, F-08, F-09, F-10 of
   `Index` naming the finding it applies to (additive API); a key claimed by
   two findings or two verdicts now falls to the `unavailable` fail-safe
   instead of being guessed. Shipped verifiers stamp `Index`.
-- **Capability inference no longer goes stale silently** (F-08). Findings from
+- **Capability inference no longer goes stale silently.** Findings from
   SD-005, SD-006, SD-016, SD-017, SD-019, SD-020, SD-021, SD-022, SD-023 and
   SD-024 now contribute to the reported `permissions`; previously only nine
   rule IDs did, so a skill flagged solely by SD-022 (DNS exfiltration) reported
@@ -697,24 +614,24 @@ Engine-review wave (F-02, F-03, F-05, F-06, F-08, F-09, F-10 of
   registered rule is in neither, so new rules cannot skip classification.
 
 ### Added
-- Schema-version enforcement (F-10). `model.SchemaVersion` is now a named
+- Schema-version enforcement. `model.SchemaVersion` is now a named
   constant, `cmd/skill-detector/testdata/schema_output.golden` holds real
   `scan --format json` output, and `schema_shapes.json` pins each version to a
   fingerprint of the emitted shape — changing the output without bumping the
   version now fails the build. Bump procedure documented in
   `docs/development-guide.md`.
 - README documents the warn-without-failing CI recipe for exit code `1`
-  (F-05): a `|| [ $? -eq 1 ]` one-liner and an explicit `case` form emitting
+  a `|| [ $? -eq 1 ]` one-liner and an explicit `case` form emitting
   `::warning::`, plus a caution that `|| true` swallows exit `3`.
 
 ### Removed
 - `rules.RegisterMCPRulesStrict` — dead since v0.2.0, when `--strict-mcp` moved
   to a post-hoc severity upgrade (`applyStrictMCP`) to keep the checksum stable.
   No caller existed in this repo or downstream. Exported-API removal, but only
-  in name: calling it produced a registry the CLI never used (F-06).
+  in name: calling it produced a registry the CLI never used.
 - `cmd/skill-detector::newRegistry` — a hand-maintained duplicate of
   `rules.DefaultRegistry()`, plus the parity test that existed only to catch
-  drift between the two. Rule groups are registered in one place again (F-06).
+  drift between the two. Rule groups are registered in one place again.
 
 ## v0.5.0 — 2026-08-05
 
@@ -770,7 +687,7 @@ Engine-review wave (F-02, F-03, F-05, F-06, F-08, F-09, F-10 of
   preceded by `-`) — `>>` still vetoes unconditionally.
 - **SD-023 downgraded High → Medium; SD-018 rename above.** Registry
   checksum moved to `589619b6386d2c41` (severity and name are both part of
-  the hashed rule metadata, ADR-0003).
+  the hashed rule metadata).
 - **SD-002 (prompt injection)** now also scans `.claude/commands/`,
   `.claude/agents/`, and skill content files, not just `SKILL.md`/`CLAUDE.md`.
 - **SD-001** now scans fenced code blocks inside Markdown
@@ -816,7 +733,7 @@ Engine-review wave (F-02, F-03, F-05, F-06, F-08, F-09, F-10 of
 
 ### Known issues
 - **SD-003** (path traversal) fires on ordinary in-package relative paths —
-  roughly 60% of findings in the validation corpus are this false-positive
+  the majority of its findings on honest input are this false-positive
   class. A proper fix needs to distinguish traversal-shaped paths
   (`../../etc`) from same-package relative references and is deferred to
   its own design pass rather than bundled into this release.
@@ -893,8 +810,8 @@ Engine-review wave (F-02, F-03, F-05, F-06, F-08, F-09, F-10 of
 ### Why
 - `SD-022` closes the only miss in the SP-7 validation benchmark: a DNS-channel
   exfiltration sample using `nslookup` plus base64-encoded environment variables
-  and no HTTP at all. Recall on the headline pool moves 0.875 → 1.0. Both
-  `semgrep` and raw grep scored 0.25 on the same set.
+  and no HTTP at all. It takes recall on the headline pool to 1.0, where both
+  `semgrep` and raw grep score far lower on the same set.
 
 ### Fixed
 - GoReleaser targeted the pre-transfer `velzepooz` org, so release asset upload

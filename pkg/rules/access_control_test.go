@@ -765,9 +765,9 @@ func TestPathTraversalResolvesAgainstSkillRoot(t *testing.T) {
 	}
 }
 
-// The absolute-path and Windows-path branches were deliberately left
-// untouched, so this change must leave them exactly as they were even when the
-// line also carries an in-package ../ reference.
+// The absolute-path and Windows-path branches were evaluated and deliberately
+// left out of scope, so this change must leave them exactly as they were even
+// when the line also carries an in-package ../ reference.
 func TestPathTraversalOtherBranchesUnaffected(t *testing.T) {
 	registry := NewRegistry()
 	RegisterAccessControlRules(registry)

@@ -88,8 +88,8 @@ var reOrdinarySegment = regexp.MustCompile(`^[A-Za-z0-9._@+~-]+$`)
 // breaks nothing in the suite (verified by construction, not assumed). It is
 // kept as a cheap early exit and as depth: it becomes load-bearing the moment
 // reOrdinarySegment is widened, which is a live possibility — the ASCII-only
-// charset is the recorded cost of the residual false positives this predicate
-// accepts. Widening that charset without keeping this guard would release
+// charset is what the residual false positives this predicate accepts are the
+// price of. Widening that charset without keeping this guard would release
 // `$HOME/../..`.
 const unresolvableTokenChars = `${}%\`
 

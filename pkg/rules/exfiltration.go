@@ -248,8 +248,8 @@ var reCaptureAssignment = regexp.MustCompile(`^\s*[\w.]+\s*=\s*\$\(`)
 // verbs. The distinction is the whole point. A deny-list — "demote unless the
 // statement uploads a file or reads local state" — has to enumerate every
 // dangerous thing a statement can do, fails OPEN on everything it forgot, and
-// ships in a public repo where an attacker reads it. It forgot whole classes
-// of local execution. An allow-list of form fails CLOSED: a statement doing
+// ships in a public repo where an attacker reads it. It forgot reverse shells
+// entirely. An allow-list of form fails CLOSED: a statement doing
 // anything this function does not recognise keeps its registered severity, and
 // what it must recognise is one short, auditable list rather than the open set
 // of ways to be dangerous.

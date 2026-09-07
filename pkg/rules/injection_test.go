@@ -577,8 +577,8 @@ func TestSD002_OneFindingPerLineForZeroWidth(t *testing.T) {
 // sitting strictly between two emoji codepoints -- the standard Unicode
 // mechanism that composes e.g. person+occupation into one glyph
 // (man + ZWJ + cooking = the "cook" emoji). It carries no payload; it is
-// how the character is spelled. The suppression predicate does not fire on
-// hostile SD-002 findings at all.
+// how the character is spelled. It is not the shape hostile SD-002 findings
+// take.
 //
 // Escapes below are written as explicit \u/\U codepoints, never as literal
 // non-ASCII source bytes: an emoji outside the Basic Multilingual Plane
