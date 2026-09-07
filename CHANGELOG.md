@@ -122,7 +122,7 @@ Registry checksum unchanged at `2414c32f04000b5d`; schema unchanged at `1.5`.
   cost sits below what the smaller measurement slice can resolve, which is why
   an earlier draft of this entry reported it as zero.
 
-  **Headline: recall untouched, precision up by one sample.** Note that metric
+  **Headline: recall untouched, precision marginally up.** Note that metric
   is a
   **composite** over `security` / `permission_hygiene` / `transparency`, which
   is why a `permission_hygiene`-only change moves it; the `security`-axis-alone
@@ -336,8 +336,8 @@ field.
 Validated against an internal corpus at `--fail-on-axis security=B`,
 installed layout — the gate metric here is the **security axis alone**, which
 is what that flag tests. Precision improves slightly and **nothing on the
-hostile side moves**: behaviour-class recall is unchanged to four decimal
-places and the hostile finding count is identical.
+hostile side moves**: behaviour-class recall and the hostile finding count are
+both unchanged.
 
 - **SD-002: a ZWJ directly between two emoji codepoints is not a hidden
   payload** (`d3c2c92`). `isInvisibleRune` correctly treats U+200D ZERO
@@ -808,9 +808,9 @@ Engine-review wave. Registry checksum unchanged
   C/D/F, guarding against recall lost to pattern tightening.
 
 ### Why
-- `SD-022` closes the only miss in the SP-7 validation benchmark: a DNS-channel
+- `SD-022` closes the only miss in the pre-release validation benchmark: a DNS-channel
   exfiltration sample using `nslookup` plus base64-encoded environment variables
-  and no HTTP at all. It takes recall on the headline pool to 1.0, where both
+  and no HTTP at all. It takes the headline pool to full recall, where both
   `semgrep` and raw grep score far lower on the same set.
 
 ### Fixed
@@ -836,7 +836,7 @@ Engine-review wave. Registry checksum unchanged
 
 ### Why
 - Powers the new `skilltrust/scan-action@v1` GitHub Action's optional `delta: true` mode.
-- Single source of truth for delta semantics shared by the Action and the skillmoss-go PR-comment bot (SP-4). skillmoss-go's `internal/prbot.ComputeDelta` becomes a thin adapter over `pkg/delta.Compute` in a paired refactor; render snapshots remain byte-identical.
+- Single source of truth for delta semantics shared by the Action and the skillmoss-go PR-comment bot. skillmoss-go's `internal/prbot.ComputeDelta` becomes a thin adapter over `pkg/delta.Compute` in a paired refactor; render snapshots remain byte-identical.
 
 ---
 
@@ -844,7 +844,7 @@ Engine-review wave. Registry checksum unchanged
 
 ### Fixed
 
-- **SD-007** no longer flags bare URLs inside `.md`, `.txt`, or `.rst` documentation files. The network-command (`curl`/`wget`/`nc`/`ncat`) and Python-requests branches continue to fire on those file types so real attack patterns (e.g., `curl ... | bash` instructions inside `CLAUDE.md`) are still caught. Documentation links such as `https://github.com/owner/repo.git` in `INSTALL.md` no longer produce high-severity false positives. Surfaced by the `skillmoss-go` SP-2 dogfood scan of `obra/superpowers`.
+- **SD-007** no longer flags bare URLs inside `.md`, `.txt`, or `.rst` documentation files. The network-command (`curl`/`wget`/`nc`/`ncat`) and Python-requests branches continue to fire on those file types so real attack patterns (e.g., `curl ... | bash` instructions inside `CLAUDE.md`) are still caught. Documentation links such as `https://github.com/owner/repo.git` in `INSTALL.md` no longer produce high-severity false positives. Surfaced by a `skillmoss-go` dogfood scan of `obra/superpowers`.
 
 ---
 
@@ -860,7 +860,7 @@ Engine-review wave. Registry checksum unchanged
   .next, .git — always skipped, regardless of .gitignore.
 - New --scan-all flag bypasses scope tightening and .gitignore
   filtering. For migration or whole-repo audits.
-- All 14 pre-SP-1 rules now gate by path; they previously fired on
+- All 14 pre-existing rules now gate by path; they previously fired on
   any file with a matching extension. This is a breaking change
   vs. v0.1.x default behavior. --scan-all + the rules' built-in
   path gating means walking more files won't reproduce v0.1.x
@@ -891,7 +891,7 @@ Engine-review wave. Registry checksum unchanged
     (worst wins).
   - `--strict-mcp` — raises `SD-021` from Medium to High.
   - `--axes-only` — emits Trust Score to stdout, findings to
-    stderr. For shell pipelines and the PR-comment renderer in SP-4.
+    stderr. For shell pipelines and the PR-comment renderer.
 - **CVE reproducer fixtures** under `testdata/cve/` — minimal repos
   reproducing five named 2026 incidents. Used by
   `cmd/skill-detector/cve_repro_test.go` for both Go-API and
@@ -941,7 +941,7 @@ Engine-review wave. Registry checksum unchanged
   with the original plan numbers).
 
 ### Dogfood pass
-An SP-1 release-candidate dogfood pass was run and logged internally.
-Verdict: ship-as-is; pre-existing-rule FPs noted as SP-2 follow-up.
+A release-candidate dogfood pass was run and logged internally.
+Verdict: ship-as-is; pre-existing-rule FPs noted as follow-up.
 
 ---
