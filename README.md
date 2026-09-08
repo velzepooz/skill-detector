@@ -1,9 +1,9 @@
 # skill-detector
 
-[![CI](https://img.shields.io/github/actions/workflow/status/velzepooz/skill-detector/ci.yml?branch=main&label=ci)](https://github.com/velzepooz/skill-detector/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/velzepooz/skill-detector)](https://github.com/velzepooz/skill-detector/releases/latest)
-[![License](https://img.shields.io/github/license/velzepooz/skill-detector)](./LICENSE)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/velzepooz/skill-detector)](./go.mod)
+[![CI](https://img.shields.io/github/actions/workflow/status/skilltrust/skill-detector/ci.yml?branch=main&label=ci)](https://github.com/skilltrust/skill-detector/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/skilltrust/skill-detector)](https://github.com/skilltrust/skill-detector/releases/latest)
+[![License](https://img.shields.io/github/license/skilltrust/skill-detector)](./LICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/skilltrust/skill-detector)](./go.mod)
 [![Go Report Card](https://goreportcard.com/badge/github.com/velzepooz/skill-detector)](https://goreportcard.com/report/github.com/velzepooz/skill-detector)
 [![Powers SkillTrust](https://img.shields.io/badge/engine_for-SkillTrust-0d9488?labelColor=1e293b)](https://skilltrust.app)
 
@@ -17,54 +17,7 @@ line by hand.
 
 > ⚠️ **Status:** Early-stage (v0.x). Usable, but rules and flags may change before 1.0.
 
-## What's new in v0.2.0 (SP-1: Multi-Axis Engine)
-
-Every scan now produces a 4-axis A–F **Trust Score** alongside the
-familiar findings list:
-
-```
-Trust Score
-  Security             D   High-severity issue: …
-  Permission hygiene   A   no findings on this axis
-  Transparency         A   no findings on this axis
-  Quality              A   no findings on this axis
-```
-
-Seven new rules target `.claude/CLAUDE.md`, `.claude/settings.json`,
-hooks, and MCP server configs — the configuration surface where
-several named 2026 CVEs lived. New CLI flags:
-
-- `--fail-on-axis <axis>=<grade>` — fail CI on an axis-grade
-  threshold (e.g. `--fail-on-axis security=B`).
-- `--strict-mcp` — treat external MCP server URLs as High severity.
-- `--axes-only` — emit just the Trust Score block on stdout
-  (findings go to stderr). Pipeable.
-
-**Scope (also new in v0.2.0):** the scanner defaults to inspecting only
-AI-agent configuration files: skill manifests (`SKILL.md`, `skill.yaml`),
-per-harness instruction files (`CLAUDE.md`, `AGENTS.md` — Codex CLI/OpenCode,
-`GEMINI.md`, `.cursorrules`, `.cursor/rules/*.mdc`,
-`.github/copilot-instructions.md`, `.windsurfrules`), and MCP/settings
-configs (`.claude/settings.json`, `.mcp.json`, `.claude/mcp.json`,
-`.cursor/mcp.json`, `.vscode/mcp.json`) — plus arbitrary files inside
-`.claude/`, `.codex/`, `.opencode/`, `.cursor/`, `.gemini/`, `.windsurf/`
-directories, plus **anything under a directory containing a `SKILL.md`** —
-the whole skill subtree is in scope wherever that directory sits, not just
-when it's installed under `.claude/skills/`. It honors `.gitignore` and
-skips `node_modules`, `vendor`, `dist`, `build`, `target`, `.next`, `.git`
-(a `SKILL.md` inside one of those creates no scope root either). Pass
-`--scan-all` to stop honoring `.gitignore` and walk every other scannable
-file (v0.1.x behavior); the hardcoded skip-dirs above still apply, and a
-`SKILL.md` inside one of them still creates no scope root.
-
-The content rules above (injection, access control, exfiltration, etc.) run
-uniformly across every harness's instruction files — the checks aren't
-Claude-specific. Parsing each harness's own *structural* config format
-(Codex `config.toml`, `opencode.json` permissions, Gemini CLI `settings.json`
-specifics, Copilot org policies) is on the roadmap; today only Claude Code's
-`.claude/settings.json` gets structural checks (SD-017..SD-020).
-
-See [CHANGELOG.md](CHANGELOG.md) for the full v0.2.0 entry.
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Why
 
@@ -77,8 +30,8 @@ directory.
 
 ## What it checks
 
-Ten rule categories (24 rules total), purpose-built for AI agent skill packages
-and the surrounding configuration files:
+Eleven rule categories (25 rules total), purpose-built for AI agent skill
+packages and the surrounding configuration files:
 
 | Category             | Catches                                                 |
 | -------------------- | ------------------------------------------------------- |
@@ -88,10 +41,11 @@ and the surrounding configuration files:
 | **Misconfiguration** | Over-broad permissions, unsafe defaults                 |
 | **Integrity**        | Tampered or unsigned files                              |
 | **Access control**   | Permission-declaration vs. actual-behavior mismatches   |
-| **CLAUDE.md** *(new in v0.2)* | SQL-injection-by-instruction, Comment-and-Control patterns |
-| **settings.json** *(new)*     | `Bash(curl:*)`/`Bash(curl*)` and PowerShell wildcards, unrestricted `"*"` grant, redundant deny made moot by a broader allow, unsanctioned hooks |
-| **Hooks** *(new)*             | Shell metacharacter interpolation in hook command strings (real nested Claude Code schema) |
-| **MCP** *(new)*               | External-domain reach (raise to High with `--strict-mcp`) and auto-installed registry packages (`npx`/`uvx`/`pipx`/`bunx`) |
+| **CLAUDE.md**        | SQL-injection-by-instruction, Comment-and-Control patterns |
+| **settings.json**    | `Bash(curl:*)`/`Bash(curl*)` and PowerShell wildcards, unrestricted `"*"` grant, redundant deny made moot by a broader allow, unsanctioned hooks |
+| **Hooks**            | Shell metacharacter interpolation in hook command strings (real nested Claude Code schema) |
+| **MCP**              | External-domain reach (raise to High with `--strict-mcp`) and auto-installed registry packages (`npx`/`uvx`/`pipx`/`bunx`) |
+| **Reverse shell**    | Reverse-shell payloads in skill scripts and instruction files |
 
 Every finding is tagged with one of four **trust axes** —
 Security, Permission hygiene, Transparency, Quality — and the scanner
@@ -100,14 +54,38 @@ emits an A–F grade per axis on every scan.
 It also parses the skill manifest YAML, so findings can be weighed against
 what the skill *claims* it needs.
 
+### Scope — which files are read
+
+By default the scanner inspects only AI-agent configuration files: skill
+manifests (`SKILL.md`, `skill.yaml`), per-harness instruction files
+(`CLAUDE.md`, `AGENTS.md` — Codex CLI/OpenCode, `GEMINI.md`, `.cursorrules`,
+`.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.windsurfrules`),
+and MCP/settings configs (`.claude/settings.json`, `.mcp.json`,
+`.claude/mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`) — plus arbitrary
+files inside `.claude/`, `.codex/`, `.opencode/`, `.cursor/`, `.gemini/`,
+`.windsurf/` directories, plus **anything under a directory containing a
+`SKILL.md`** — the whole skill subtree is in scope wherever that directory
+sits, not just when it's installed under `.claude/skills/`. It honors
+`.gitignore` and skips `node_modules`, `vendor`, `dist`, `build`, `target`,
+`.next`, `.git` (a `SKILL.md` inside one of those creates no scope root
+either). Pass `--scan-all` to stop honoring `.gitignore` and walk every other
+scannable file; the hardcoded skip-dirs above still apply, and a `SKILL.md`
+inside one of them still creates no scope root.
+
+The content rules above (injection, access control, exfiltration, etc.) run
+uniformly across every harness's instruction files — the checks aren't
+Claude-specific. Parsing each harness's own *structural* config format
+(Codex `config.toml`, `opencode.json` permissions, Gemini CLI `settings.json`
+specifics, Copilot org policies) is on the roadmap; today only Claude Code's
+`.claude/settings.json` gets structural checks (SD-017..SD-020).
+
 ### What it does NOT check (by default)
 
 - Source code files (`.ts`, `.py`, `.go`, etc.) — that's Snyk / Semgrep's lane.
 - `node_modules/`, `vendor/`, `dist/`, lock files — always skipped.
 - Files matched by your repo's `.gitignore`.
 
-If you want the v0.1.x behavior of scanning every file with a known extension,
-pass `--scan-all`.
+To scan every file with a known extension instead, pass `--scan-all`.
 
 ## Install
 
@@ -120,7 +98,7 @@ go install github.com/velzepooz/skill-detector/cmd/skill-detector@latest
 ```
 
 Or grab a prebuilt binary from
-[Releases](https://github.com/velzepooz/skill-detector/releases)
+[Releases](https://github.com/skilltrust/skill-detector/releases)
 (linux / darwin / windows × amd64 / arm64).
 
 ## Usage
@@ -133,7 +111,7 @@ skill-detector scan ~/.claude/skills
 # CI: fail on HIGH+ severity
 skill-detector scan ./my-skill --fail-on high
 
-# CI: fail on an axis-grade threshold (new in v0.2)
+# CI: fail on an axis-grade threshold
 skill-detector scan ./my-skill --fail-on-axis security=B
 # repeatable — combines with --fail-on (worst wins)
 skill-detector scan . --fail-on-axis security=B --fail-on-axis permission_hygiene=C
@@ -242,7 +220,7 @@ Build / test / lint instructions: [`docs/development-guide.md`](./docs/developme
 
 If you've found a vulnerability in `skill-detector` itself (not in a skill it
 scanned), please file a
-[private security advisory](https://github.com/velzepooz/skill-detector/security/advisories/new)
+[private security advisory](https://github.com/skilltrust/skill-detector/security/advisories/new)
 rather than a public issue.
 
 ## License
